@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/server.dir/server.cpp.o CMakeFiles/server.dir/tcp_handler.cpp.o CMakeFiles/server.dir/udp_handler.cpp.o CMakeFiles/server.dir/quic_handler.cpp.o -o server  -lmsquic /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so -lpthread 

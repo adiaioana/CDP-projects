@@ -1,0 +1,5 @@
+/mnt/d/mst/PCD/H1/build/CMakeFiles/server.dir
+/mnt/d/mst/PCD/H1/build/CMakeFiles/client.dir
+/mnt/d/mst/PCD/H1/build/CMakeFiles/gen_cert.dir
+/mnt/d/mst/PCD/H1/build/CMakeFiles/edit_cache.dir
+/mnt/d/mst/PCD/H1/build/CMakeFiles/rebuild_cache.dir
