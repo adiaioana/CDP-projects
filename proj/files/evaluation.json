@@ -1,0 +1,243 @@
+{
+  "detection": {
+    "per_day": [
+      {
+        "day": 0,
+        "label": "none",
+        "true_event": false,
+        "routine_score": 2.16,
+        "routine_tier": "LOG",
+        "baseline_score": 1.66,
+        "baseline_tier": "LOG",
+        "verdict_block": "morning",
+        "verdict_direction": "less"
+      },
+      {
+        "day": 1,
+        "label": "inactivity",
+        "true_event": true,
+        "routine_score": 7.42,
+        "routine_tier": "URGENT",
+        "baseline_score": 5.42,
+        "baseline_tier": "NOTIFY",
+        "verdict_block": "day",
+        "verdict_direction": "less"
+      },
+      {
+        "day": 2,
+        "label": "none",
+        "true_event": false,
+        "routine_score": 1.67,
+        "routine_tier": "LOG",
+        "baseline_score": 2.16,
+        "baseline_tier": "LOG",
+        "verdict_block": "day",
+        "verdict_direction": "more"
+      },
+      {
+        "day": 3,
+        "label": "night_movement",
+        "true_event": true,
+        "routine_score": 77.06,
+        "routine_tier": "URGENT",
+        "baseline_score": 13.54,
+        "baseline_tier": "URGENT",
+        "verdict_block": "night",
+        "verdict_direction": "more"
+      },
+      {
+        "day": 4,
+        "label": "none",
+        "true_event": false,
+        "routine_score": 2.7,
+        "routine_tier": "LOG",
+        "baseline_score": 0.1,
+        "baseline_tier": "LOG",
+        "verdict_block": "morning",
+        "verdict_direction": "more"
+      },
+      {
+        "day": 5,
+        "label": "missed_routine",
+        "true_event": true,
+        "routine_score": 15.92,
+        "routine_tier": "URGENT",
+        "baseline_score": 0.49,
+        "baseline_tier": "LOG",
+        "verdict_block": "morning",
+        "verdict_direction": "less"
+      },
+      {
+        "day": 6,
+        "label": "none",
+        "true_event": false,
+        "routine_score": 0.97,
+        "routine_tier": "LOG",
+        "baseline_score": 1.76,
+        "baseline_tier": "LOG",
+        "verdict_block": "evening",
+        "verdict_direction": "less"
+      },
+      {
+        "day": 7,
+        "label": "benign_atypical",
+        "true_event": false,
+        "routine_score": 37.6,
+        "routine_tier": "URGENT",
+        "baseline_score": 3.59,
+        "baseline_tier": "NOTIFY",
+        "verdict_block": "night",
+        "verdict_direction": "more"
+      },
+      {
+        "day": 8,
+        "label": "none",
+        "true_event": false,
+        "routine_score": 2.97,
+        "routine_tier": "LOG",
+        "baseline_score": 0.17,
+        "baseline_tier": "LOG",
+        "verdict_block": "morning",
+        "verdict_direction": "more"
+      },
+      {
+        "day": 9,
+        "label": "none",
+        "true_event": false,
+        "routine_score": 0.67,
+        "routine_tier": "LOG",
+        "baseline_score": 0.44,
+        "baseline_tier": "LOG",
+        "verdict_block": "day",
+        "verdict_direction": "more"
+      }
+    ],
+    "routine_model": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 1,
+      "tn": 6,
+      "precision": 0.75,
+      "recall": 1.0
+    },
+    "baseline_model": {
+      "tp": 2,
+      "fn": 1,
+      "fp": 1,
+      "tn": 6,
+      "precision": 0.667,
+      "recall": 0.667
+    },
+    "false_positive_analysis": {
+      "benign_day_index": 7,
+      "routine_tier_on_benign": "URGENT",
+      "baseline_tier_on_benign": "NOTIFY",
+      "interpretation": "The benign-atypical day (guest/sick day) is unusual but NOT a safety event. Any NOTIFY/URGENT here is a false positive. This is the project's required negative case."
+    },
+    "caregiver_feed": [
+      {
+        "date": "2025-02-02",
+        "tier": "URGENT",
+        "text": "[Attention requested] On 2025-02-02, less-than-usual activity during the daytime period. Automated prototype alert; not a medical assessment and does not contact emergency services."
+      },
+      {
+        "date": "2025-02-04",
+        "tier": "URGENT",
+        "text": "[Attention requested] On 2025-02-04, more-than-usual activity during overnight. Automated prototype alert; not a medical assessment and does not contact emergency services."
+      },
+      {
+        "date": "2025-02-06",
+        "tier": "URGENT",
+        "text": "[Attention requested] On 2025-02-06, less-than-usual activity during the morning routine. Automated prototype alert; not a medical assessment and does not contact emergency services."
+      },
+      {
+        "date": "2025-02-08",
+        "tier": "URGENT",
+        "text": "[Attention requested] On 2025-02-08, more-than-usual activity during overnight. Automated prototype alert; not a medical assessment and does not contact emergency services."
+      }
+    ],
+    "audit_summary": {
+      "total_accesses": 10,
+      "viewers": [
+        "caregiver_A"
+      ]
+    }
+  },
+  "transport": {
+    "direct": {
+      "transport": "direct",
+      "connection_success": true,
+      "events_sent": 300,
+      "events_delivered": 300,
+      "delivery_rate": 1.0,
+      "latency_ms_mean": 0.013,
+      "latency_ms_p95": 0.016,
+      "throughput_eps": 78050.53,
+      "error": null,
+      "setup_complexity": "trivial (no extra software)",
+      "threat_model": "No confidentiality vs anyone on the LAN/path. Sensor events readable by local network observers. Acceptable only on a trusted, isolated lab segment.",
+      "anonymity": "none -- source and destination IPs fully visible."
+    },
+    "vpn": {
+      "transport": "vpn",
+      "connection_success": true,
+      "events_sent": 300,
+      "events_delivered": 300,
+      "delivery_rate": 1.0,
+      "latency_ms_mean": 0.014,
+      "latency_ms_p95": 0.019,
+      "throughput_eps": 72051.21,
+      "error": null,
+      "setup_complexity": "moderate -- requires an institutionally approved VPN client, configured by the operator, not by this script.",
+      "threat_model": "Encrypts the home->VPN-exit hop; hides traffic from the local ISP/LAN observer. The VPN provider itself becomes a trusted third party and can see metadata. Not anonymity, but meaningful confidentiality.",
+      "anonymity": "limited -- VPN provider can correlate source and destination."
+    },
+    "tor": {
+      "transport": "tor",
+      "connection_success": false,
+      "events_sent": 300,
+      "events_delivered": 0,
+      "delivery_rate": 0.0,
+      "latency_ms_mean": null,
+      "latency_ms_p95": null,
+      "throughput_eps": null,
+      "error": "ProxyConnectionError: Error connecting to SOCKS5 proxy 127.0.0.1:9050: [Errno 111] Connection refused",
+      "setup_complexity": "high -- operator must install and run the official Tor daemon; higher and more variable latency.",
+      "threat_model": "Multi-hop onion routing: no single relay sees both source and destination. Strong against local network observers and the destination learning the home's IP.",
+      "anonymity": "strongest of the three, but NOT absolute -- a global passive adversary or traffic-correlation attack can still de-anonymize. State this limit honestly in the paper."
+    }
+  },
+  "privacy": {
+    "data_minimization": {
+      "home_side_raw_values_per_day": 8640,
+      "caregiver_side_fields_per_verdict": 5,
+      "reduction_ratio": 1728.0,
+      "note": "The caregiver side cannot reconstruct per-minute activity or room-level counts: those values never cross the boundary. Minimization is enforced by the MinimalVerdict schema, not by convention."
+    },
+    "consent_gate_experiment": {
+      "feed_size_when_active": 1,
+      "submit_accepted_while_paused": false,
+      "feed_size_when_paused": 0,
+      "interpretation": "While the resident has paused monitoring, no verdict is accepted and the caregiver feed is empty. This is a deliberate negative case: the resident's consent overrides alert delivery, even for an URGENT-tier event."
+    },
+    "retention_experiment": {
+      "days_before_purge": 15,
+      "days_after_purge": 8,
+      "purge_report": {
+        "max_age_days": 7,
+        "cutoff": "2025-02-08",
+        "purged_dates": [
+          "2025-02-01",
+          "2025-02-02",
+          "2025-02-03",
+          "2025-02-04",
+          "2025-02-05",
+          "2025-02-06",
+          "2025-02-07"
+        ],
+        "purged_count": 7
+      },
+      "interpretation": "Raw per-minute sensor data is the most sensitive asset and is not retained indefinitely; days older than the policy window are purged."
+    }
+  }
+}

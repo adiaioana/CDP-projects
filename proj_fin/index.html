@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hearth — Smart-Home Wellbeing Monitor</title>
+<style>
+  /* ---- Clinical-calm editorial direction: warm paper, ink, restrained ---- */
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Spline+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#f4f1ea; --ink:#23201b; --muted:#6b6459;
+    --line:#d8d2c4; --card:#fbfaf6;
+    --log:#5b8c6e; --notify:#c08a3e; --urgent:#b14a3c;
+    --accent:#3a5a7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Spline Sans',sans-serif; line-height:1.55;
+    padding:2.5rem 1.5rem; max-width:1080px; margin:0 auto;
+  }
+  header{border-bottom:2px solid var(--ink); padding-bottom:1.2rem; margin-bottom:.4rem}
+  h1{font-family:'Fraunces',serif; font-weight:600; font-size:2.4rem; letter-spacing:-.01em}
+  h1 span{color:var(--accent); font-style:italic}
+  .sub{color:var(--muted); font-size:.95rem; margin-top:.2rem}
+  .disclaimer{
+    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--notify);
+    padding:.7rem .9rem; font-size:.82rem; color:var(--muted); margin:1.4rem 0;
+  }
+  h2{font-family:'Fraunces',serif; font-weight:500; font-size:1.4rem;
+     margin:2.2rem 0 .9rem; display:flex; align-items:baseline; gap:.6rem}
+  h2 .tag{font-family:'Spline Sans';font-size:.7rem;letter-spacing:.12em;
+     text-transform:uppercase;color:var(--muted)}
+  .grid{display:grid; gap:.8rem}
+  .days{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .day{
+    background:var(--card); border:1px solid var(--line); padding:.8rem;
+    border-radius:3px; position:relative;
+  }
+  .day .d{font-size:.72rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase}
+  .day .tier{font-family:'Fraunces',serif; font-size:1.15rem; font-weight:600; margin-top:.15rem}
+  .day .lbl{font-size:.78rem; color:var(--muted); margin-top:.3rem}
+  .day .score{font-size:.72rem; color:var(--muted); margin-top:.4rem; font-variant-numeric:tabular-nums}
+  .pill{display:inline-block; width:9px;height:9px;border-radius:50%;position:absolute;top:.8rem;right:.8rem}
+  .LOG{color:var(--log)} .NOTIFY{color:var(--notify)} .URGENT{color:var(--urgent)}
+  .bg-LOG{background:var(--log)} .bg-NOTIFY{background:var(--notify)} .bg-URGENT{background:var(--urgent)}
+  .fp{outline:2px dashed var(--urgent); outline-offset:2px}
+  .msg{
+    background:var(--card); border:1px solid var(--line); padding:.9rem 1rem;
+    border-radius:3px; font-size:.9rem; margin-bottom:.6rem;
+  }
+  .msg.NOTIFY{border-left:3px solid var(--notify)}
+  .msg.URGENT{border-left:3px solid var(--urgent)}
+  .msg .head{font-weight:600; font-size:.78rem; letter-spacing:.06em; text-transform:uppercase}
+  table{width:100%; border-collapse:collapse; font-size:.86rem; margin-top:.4rem}
+  th,td{text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--line)}
+  th{font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  td.num{font-variant-numeric:tabular-nums}
+  .ok{color:var(--log); font-weight:600} .fail{color:var(--urgent); font-weight:600}
+  .note{font-size:.8rem; color:var(--muted); margin-top:.5rem}
+  .metrics{display:flex; gap:1.4rem; flex-wrap:wrap; margin:.6rem 0}
+  .metric{background:var(--card); border:1px solid var(--line); padding:.7rem 1rem; border-radius:3px}
+  .metric .v{font-family:'Fraunces',serif; font-size:1.6rem; font-weight:600}
+  .metric .k{font-size:.72rem; color:var(--muted); letter-spacing:.06em; text-transform:uppercase}
+  footer{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+    font-size:.78rem; color:var(--muted)}
+  .err{color:var(--muted); font-size:1rem; padding:2rem; text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>Hearth <span>— wellbeing monitor</span></h1>
+  <div class="sub">Ambient-sensor anomaly review · caregiver prototype dashboard</div>
+</header>
+
+<div class="disclaimer">
+  <strong>Prototype notice.</strong> This is a course prototype evaluated on
+  synthetic data over a short project period. It is <em>not</em> a clinically
+  validated medical device and does not contact emergency services. Alerts are
+  decision-support signals for a human caregiver, not diagnoses.
+</div>
+
+<div id="app"><div class="err">Loading evaluation.json…</div></div>
+
+<footer>
+  Hearth prototype · privacy-by-design: ambient binary sensors only, no
+  cameras, no microphones, no personally identifying data. Synthetic dataset;
+  no real person is sensed.
+</footer>
+
+<script>
+const TIER_ORDER = {LOG:0, NOTIFY:1, URGENT:2};
+
+function render(data){
+  const det = data.detection, tr = data.transport;
+  const days = det.per_day;
+  const rm = det.routine_model, fp = det.false_positive_analysis;
+  let h = '';
+
+  // ---- Escalation feed (built from the privacy boundary) ----
+  h += `<h2>Caregiver feed <span class="tag">via privacy boundary</span></h2>`;
+  const feed = det.caregiver_feed || [];
+  if(!feed.length){
+    h += `<div class="msg">No notifications. All reviewed days within routine.</div>`;
+  } else {
+    for(const f of feed){
+      h += `<div class="msg ${f.tier}">
+        <div class="head ${f.tier}">${f.tier==='URGENT'
+          ?'Attention requested':'Check-in suggested'}</div>
+        <div>${f.text}</div></div>`;
+    }
+  }
+
+  // ---- Day grid ----
+  h += `<h2>Daily review <span class="tag">routine model</span></h2>`;
+  h += `<div class="grid days">`;
+  for(const d of days){
+    const isFP = (d.routine_tier!=='LOG') && !d.true_event;
+    h += `<div class="day ${isFP?'fp':''}">
+      <span class="pill bg-${d.routine_tier}"></span>
+      <div class="d">Day ${d.day}</div>
+      <div class="tier ${d.routine_tier}">${d.routine_tier}</div>
+      <div class="lbl">${d.label.replace('_',' ')}</div>
+      <div class="score">score ${d.routine_score} · base ${d.baseline_score}</div>
+    </div>`;
+  }
+  h += `</div>`;
+
+  // ---- Model performance ----
+  h += `<h2>Model performance <span class="tag">routine vs baseline</span></h2>`;
+  const bm = det.baseline_model;
+  h += `<div class="metrics">
+    <div class="metric"><div class="v">${rm.recall}</div><div class="k">routine recall</div></div>
+    <div class="metric"><div class="v">${rm.precision}</div><div class="k">routine precision</div></div>
+    <div class="metric"><div class="v">${bm.recall}</div><div class="k">baseline recall</div></div>
+    <div class="metric"><div class="v">${bm.precision}</div><div class="k">baseline precision</div></div>
+  </div>`;
+  h += `<div class="msg ${fp.routine_tier_on_benign==='LOG'?'':'URGENT'}">
+    <div class="head">False-positive case · benign day ${fp.benign_day_index}</div>
+    <div>A guest-visit / sick day is unusual but <em>not</em> a safety event.
+    The routine model escalated it to <strong>${fp.routine_tier_on_benign}</strong>
+    and the baseline to <strong>${fp.baseline_tier_on_benign}</strong> — both
+    false positives. This documented failure case shows the prototype cannot
+    yet separate "abnormal but safe" from "abnormal and dangerous."</div>
+  </div>`;
+
+  // ---- Transport ----
+  h += `<h2>Stream transport <span class="tag">direct · vpn · tor</span></h2>`;
+  h += `<table><thead><tr><th>Transport</th><th>Connection</th>
+    <th>Latency (mean)</th><th>Throughput</th><th>Anonymity</th></tr></thead><tbody>`;
+  for(const k of ['direct','vpn','tor']){
+    const m = tr[k];
+    h += `<tr>
+      <td>${k.toUpperCase()}</td>
+      <td>${m.connection_success
+            ?'<span class="ok">OK</span>'
+            :'<span class="fail">FAIL</span>'}</td>
+      <td class="num">${m.latency_ms_mean!=null?m.latency_ms_mean+' ms':'—'}</td>
+      <td class="num">${m.throughput_eps!=null?m.throughput_eps+' ev/s':'—'}</td>
+      <td>${(m.anonymity||'').split(' --')[0]}</td>
+    </tr>`;
+  }
+  h += `</tbody></table>`;
+  if(!tr.tor.connection_success){
+    h += `<div class="note"><strong>Documented failure case:</strong>
+      the Tor path failed (${tr.tor.error}) because no local Tor daemon was
+      running during this measurement. Recorded, not hidden — see the
+      evaluation report's negative-results section.</div>`;
+  }
+
+  // ---- Privacy controls ----
+  const pv = data.privacy;
+  if(pv){
+    const dm = pv.data_minimization, ce = pv.consent_gate_experiment,
+          re = pv.retention_experiment;
+    h += `<h2>Privacy by design <span class="tag">enforced controls</span></h2>`;
+    h += `<div class="metrics">
+      <div class="metric"><div class="v">${dm.reduction_ratio}×</div>
+        <div class="k">data reduction at boundary</div></div>
+      <div class="metric"><div class="v">${dm.caregiver_side_fields_per_verdict}</div>
+        <div class="k">fields sent to caregiver</div></div>
+      <div class="metric"><div class="v">${re.purge_report.purged_count}</div>
+        <div class="k">raw days purged (retention)</div></div>
+      <div class="metric"><div class="v">${a.audit_summary.total_accesses}</div>
+        <div class="k">audited caregiver accesses</div></div>
+    </div>`;
+    h += `<div class="msg">
+      <div class="head">Home / caregiver boundary</div>
+      <div>The detector runs home-side on raw sensor data
+      (${dm.home_side_raw_values_per_day} values/day). Only a minimal
+      verdict crosses to this caregiver view — per-minute activity and
+      room-level counts never leave the home.</div></div>`;
+    h += `<div class="msg ${ce.feed_size_when_paused===0?'':'URGENT'}">
+      <div class="head">Consent gate · negative case</div>
+      <div>When the resident pauses monitoring, an URGENT-tier verdict is
+      rejected (accepted = ${ce.submit_accepted_while_paused}) and the
+      caregiver feed is empty (size = ${ce.feed_size_when_paused}). The
+      resident's consent overrides alert delivery.</div></div>`;
+  }
+
+  document.getElementById('app').innerHTML = h;
+}
+
+fetch('../results/evaluation.json')
+  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(render)
+  .catch(e=>{
+    document.getElementById('app').innerHTML =
+      `<div class="err">Could not load <code>results/evaluation.json</code>
+       (${e.message}).<br>Run <code>python3 src/evaluate.py</code> first,
+       then open this file from a local server.</div>`;
+  });
+</script>
+</body>
+</html>
