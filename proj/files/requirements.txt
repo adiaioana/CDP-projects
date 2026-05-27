@@ -1,0 +1,12 @@
+# Hearth — Smart-Home Wellbeing Monitor
+# Python >= 3.10 required (dataclasses with frozen=True, match/type hints)
+#
+# Install:  pip install -r requirements.txt
+# Tor path: also requires the official Tor daemon running on 127.0.0.1:9050
+#           (graceful failure if absent — recorded as the negative-case experiment)
+
+numpy>=1.24
+pandas>=2.0
+
+# Optional: needed only for the Tor transport path in transport.py
+PySocks>=1.7

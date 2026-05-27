@@ -37,7 +37,8 @@ SENSORS = [
 ]
 
 ANOMALY_TYPES = (
-    "none", "inactivity", "night_movement", "missed_routine", "benign_atypical",
+    "none", "inactivity", "mild_inactivity", "night_movement",
+    "missed_routine", "benign_atypical",
 )
 
 
@@ -118,6 +119,10 @@ def _inject(df: pd.DataFrame, anomaly: str,
         # Morning kitchen + bathroom routine simply does not happen
         df.iloc[390:510, cols("motion_kitchen", "motion_bathroom",
                                "fridge_open")] = 0
+    elif anomaly == "mild_inactivity":
+        # Shorter afternoon flat period (2.5 h): plausible nap or rest.
+        # Score should land in the NOTIFY tier (3.0–6.0), not URGENT.
+        df.iloc[660:810, :len(SENSORS)] = 0
     elif anomaly == "benign_atypical":
         # NEGATIVE CASE: a guest stays over / sick day. Activity is unusual
         # (late nights, extra movement, skipped errands) but NOT a safety

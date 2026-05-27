@@ -44,8 +44,7 @@ from transport import run_transport_benchmark                        # noqa: E40
 from privacy import (ConsentGate, AuditLog, RetentionPolicy,          # noqa: E402
                      PrivacyAwarePipeline, minimize)
 
-RESULTS = Path(__file__).resolve().parent.parent / "results"
-RESULTS.mkdir(exist_ok=True)
+RESULTS = Path(__file__).resolve().parent
 
 
 def _split_days(ds: pd.DataFrame):
@@ -59,8 +58,9 @@ def _split_days(ds: pd.DataFrame):
 def part_a_detection() -> dict:
     train_ds = generate_dataset(14, anomaly_schedule={}, seed=1)
     test_schedule = {1: "inactivity", 3: "night_movement",
-                     5: "missed_routine", 7: "benign_atypical"}
-    test_ds = generate_dataset(10, anomaly_schedule=test_schedule, seed=2)
+                     5: "missed_routine", 7: "benign_atypical",
+                     9: "mild_inactivity"}
+    test_ds = generate_dataset(12, anomaly_schedule=test_schedule, seed=2)
     train_days = [g for _, g, _ in _split_days(train_ds)]
 
     routine = RoutineModel().fit(train_days)
@@ -74,7 +74,7 @@ def part_a_detection() -> dict:
     rows = []
     for day, df, label in _split_days(test_ds):
         is_true_event = label in ("inactivity", "night_movement",
-                                  "missed_routine")
+                                  "missed_routine", "mild_inactivity")
         r_score = routine.score(df)
         b_score = baseline.score(df)
         r_tier = escalate(r_score)
@@ -130,6 +130,7 @@ def part_a_detection() -> dict:
         "false_positive_analysis": fp_analysis,
         "caregiver_feed": feed,
         "audit_summary": audit.summary(),
+        "audit_entries": audit.for_resident(),
     }
 
 

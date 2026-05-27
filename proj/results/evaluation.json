@@ -102,53 +102,31 @@
       },
       {
         "day": 9,
-        "label": "mild_inactivity",
-        "true_event": true,
-        "routine_score": 3.23,
-        "routine_tier": "NOTIFY",
-        "baseline_score": 2.52,
-        "baseline_tier": "LOG",
-        "verdict_block": "day",
-        "verdict_direction": "less"
-      },
-      {
-        "day": 10,
         "label": "none",
         "true_event": false,
-        "routine_score": 1.35,
+        "routine_score": 0.67,
         "routine_tier": "LOG",
-        "baseline_score": 1.07,
-        "baseline_tier": "LOG",
-        "verdict_block": "morning",
-        "verdict_direction": "less"
-      },
-      {
-        "day": 11,
-        "label": "none",
-        "true_event": false,
-        "routine_score": 2.45,
-        "routine_tier": "LOG",
-        "baseline_score": 0.6,
+        "baseline_score": 0.44,
         "baseline_tier": "LOG",
         "verdict_block": "day",
         "verdict_direction": "more"
       }
     ],
     "routine_model": {
-      "tp": 4,
+      "tp": 3,
       "fn": 0,
       "fp": 1,
-      "tn": 7,
-      "precision": 0.8,
+      "tn": 6,
+      "precision": 0.75,
       "recall": 1.0
     },
     "baseline_model": {
       "tp": 2,
-      "fn": 2,
+      "fn": 1,
       "fp": 1,
-      "tn": 7,
+      "tn": 6,
       "precision": 0.667,
-      "recall": 0.5
+      "recall": 0.667
     },
     "false_positive_analysis": {
       "benign_day_index": 7,
@@ -176,93 +154,14 @@
         "date": "2025-02-08",
         "tier": "URGENT",
         "text": "[Attention requested] On 2025-02-08, more-than-usual activity during overnight. Automated prototype alert; not a medical assessment and does not contact emergency services."
-      },
-      {
-        "date": "2025-02-10",
-        "tier": "NOTIFY",
-        "text": "[Check-in suggested] On 2025-02-10, less-than-usual activity during the daytime period. Automated prototype alert; not a medical assessment and does not contact emergency services."
       }
     ],
     "audit_summary": {
-      "total_accesses": 12,
+      "total_accesses": 10,
       "viewers": [
         "caregiver_A"
       ]
-    },
-    "audit_entries": [
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-01",
-        "verdict_tier": "LOG"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-02",
-        "verdict_tier": "URGENT"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-03",
-        "verdict_tier": "LOG"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-04",
-        "verdict_tier": "URGENT"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-05",
-        "verdict_tier": "LOG"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-06",
-        "verdict_tier": "URGENT"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-07",
-        "verdict_tier": "LOG"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-08",
-        "verdict_tier": "URGENT"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-09",
-        "verdict_tier": "LOG"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-10",
-        "verdict_tier": "NOTIFY"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-11",
-        "verdict_tier": "LOG"
-      },
-      {
-        "ts": "2026-05-27T16:52:26",
-        "viewer": "caregiver_A",
-        "verdict_date": "2025-02-12",
-        "verdict_tier": "LOG"
-      }
-    ]
+    }
   },
   "transport": {
     "direct": {
@@ -271,9 +170,9 @@
       "events_sent": 300,
       "events_delivered": 300,
       "delivery_rate": 1.0,
-      "latency_ms_mean": 0.064,
-      "latency_ms_p95": 0.132,
-      "throughput_eps": 15732.26,
+      "latency_ms_mean": 0.056,
+      "latency_ms_p95": 0.118,
+      "throughput_eps": 17907.77,
       "error": null,
       "setup_complexity": "trivial (no extra software)",
       "threat_model": "No confidentiality vs anyone on the LAN/path. Sensor events readable by local network observers. Acceptable only on a trusted, isolated lab segment.",
@@ -285,9 +184,9 @@
       "events_sent": 300,
       "events_delivered": 300,
       "delivery_rate": 1.0,
-      "latency_ms_mean": 0.058,
-      "latency_ms_p95": 0.116,
-      "throughput_eps": 17169.84,
+      "latency_ms_mean": 0.082,
+      "latency_ms_p95": 0.175,
+      "throughput_eps": 12143.44,
       "error": null,
       "setup_complexity": "moderate -- requires an institutionally approved VPN client, configured by the operator, not by this script.",
       "threat_model": "Encrypts the home->VPN-exit hop; hides traffic from the local ISP/LAN observer. The VPN provider itself becomes a trusted third party and can see metadata. Not anonymity, but meaningful confidentiality.",

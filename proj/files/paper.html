@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hearth — IEEE-Style Paper</title>
+<style>
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    line-height: 1.75;
+    color: #111;
+    background: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 0.4rem;
+    line-height: 1.3;
+  }
+  .authors {
+    text-align: center;
+    font-size: 0.95rem;
+    color: #444;
+    margin-bottom: 0.3rem;
+  }
+  .venue {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 2rem;
+  }
+  h2 {
+    font-size: 1.05rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.2rem;
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-top: 1.2rem;
+    margin-bottom: 0.3rem;
+  }
+  p {
+    margin: 0 0 0.9rem;
+    text-align: justify;
+  }
+  .abstract-box {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 1rem 1.2rem;
+    margin-bottom: 2rem;
+  }
+  .abstract-box .abstract-title {
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 1rem 0 1.2rem;
+  }
+  th {
+    text-align: left;
+    border-bottom: 2px solid #111;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.82rem;
+  }
+  td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #ddd;
+  }
+  .caption {
+    font-size: 0.83rem;
+    color: #444;
+    text-align: center;
+    margin-top: -0.8rem;
+    margin-bottom: 1.2rem;
+  }
+  .disclaimer {
+    font-size: 0.82rem;
+    color: #555;
+    border-top: 1px solid #ddd;
+    margin-top: 2.5rem;
+    padding-top: 0.8rem;
+  }
+  .refs p {
+    padding-left: 1.5rem;
+    text-indent: -1.5rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.88rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Privacy-Aware Smart Home Monitoring for Daily Routine Anomaly Detection</h1>
+<div class="authors">CDP Project 35 — Team</div>
+<div class="venue">Course Design Project, 2025</div>
+
+<div class="abstract-box">
+  <div class="abstract-title">Abstract</div>
+  <p style="margin:0; text-align:justify">
+    Smart homes can support independent living for older adults, but continuous sensor monitoring raises serious privacy concerns. This paper presents Hearth, a prototype ambient-sensing system that detects daily routine anomalies while minimizing sensitive data collection. We model normal daily behavior using binary motion sensors and a block-based robust detector, then flag deviations such as prolonged daytime inactivity, unusual nighttime movement, and missed morning routines. A privacy-by-design architecture enforces a strict home/caregiver data boundary: raw sensor data never leaves the local device, and only a five-field minimal verdict is delivered to the caregiver view. We evaluate the system on 12 synthetic test days and achieve recall 1.0 and precision 0.8 with our RoutineModel, outperforming a threshold baseline (recall 0.5, precision 0.67). We also compare three transport configurations (direct connection, VPN, Tor) and document a required failure case when no Tor daemon is available. The system includes a caregiver notification policy with three escalation tiers, a consent gate allowing the resident to pause monitoring, a retention policy that purges raw data after seven days, and an audit log of all caregiver accesses. All results are produced on synthetic data; no real person is monitored.
+  </p>
+</div>
+
+
+<h2>I. Introduction</h2>
+
+<p>Population ageing and the increasing preference for independent living have created demand for ambient monitoring systems that can detect health-relevant behavioral changes without requiring continuous professional supervision. A smart home equipped with motion sensors can, in principle, detect when a resident has been inactive for an unusually long time, has moved around during sleeping hours, or has failed to complete a regular morning routine. Such deviations may indicate a fall, illness, or deterioration that a human caregiver should investigate.</p>
+
+<p>However, continuous in-home monitoring creates a significant privacy risk. A system that collects fine-grained per-minute activity logs, room-level presence data, or audio and video signals can reveal intimate details of a resident's daily life. If that data is transmitted to a remote caregiver, the resident loses control over who can access it, for how long, and for what purpose. The research problem is therefore not only technical but also ethical: how can routine anomalies be detected while minimizing the amount of sensitive information collected and shared?</p>
+
+<p>This paper describes Hearth, a course prototype that addresses this problem. The system uses six binary ambient sensors (motion and door/fridge contact) and a time-of-day block model to learn a resident's typical daily pattern from training data. Anomaly scoring is based on robust deviation from learned block-level activity profiles. Privacy is enforced by a structural data boundary: only a five-field minimal verdict (date, tier, coarse block, rounded score, direction) can cross from the home device to the caregiver dashboard. The contribution of this paper is a demonstration that all five core requirements specified in the project brief (data minimization, anomaly model, false-positive analysis, caregiver notification policy, and ethical review) can be satisfied within a three-week prototype scope using purely synthetic data and open-source tools.</p>
+
+
+<h2>II. Related Work</h2>
+
+<p>Anomaly detection in smart home environments has been studied extensively using datasets such as CASAS [1], which provides real-world multi-resident activity logs from sensor-equipped homes. Common approaches include Hidden Markov Models, time-series clustering, and, more recently, LSTM-based sequence models [2]. These methods typically require labelled activity data and model full activity sequences. Our approach differs by working only with aggregate per-block activity counts, which is a deliberate design choice driven by privacy: the model needs no knowledge of which room a person is in at a specific minute.</p>
+
+<p>Privacy-preserving smart home monitoring has been explored through federated learning [3], differential privacy, and on-device inference. Our work takes a simpler approach suited to the project scope: a structural data minimization boundary enforced by a frozen dataclass schema that cannot carry raw sensor fields. The key insight is that privacy can be enforced in code rather than relying on policy or convention.</p>
+
+<p>Transport-layer privacy for health data streams has been studied in the context of telemedicine. Tor-based approaches provide strong anonymity but suffer from high and variable latency [4], which is acceptable for low-frequency alert delivery but not for real-time streaming. Our comparison of direct, VPN, and Tor paths quantifies this trade-off for the specific workload of ambient sensor events.</p>
+
+
+<h2>III. System Design</h2>
+
+<h3>A. Dataset and Sensors</h3>
+
+<p>The Hearth prototype uses fully synthetic data. No real person is monitored. Six binary ambient sensors are simulated: motion in the living room, bedroom, kitchen, and bathroom, plus front door contact and fridge open/close. These sensors were selected to cover the main routine activities of a single-occupant household (sleeping, morning hygiene, meals, going out, evening leisure) while avoiding any high-sensitivity modality. No audio, video, or continuous location trace is generated. Each day is represented as 1440 rows (one per minute) with binary values for each sensor. A stochastic generator produces realistic baseline days and can inject one of five anomaly types on selected days: normal, inactivity, mild inactivity, night movement, missed morning routine, and a benign atypical day used for false-positive analysis.</p>
+
+<h3>B. Anomaly Detection Model</h3>
+
+<p>The day is divided into four time-of-day blocks: night (00:00 to 06:30), morning (06:30 to 08:30), day (08:30 to 18:00), and evening (18:00 to 24:00). For each block, the model learns the median activity count and the median absolute deviation (MAD) across training days. The anomaly score for a test day is the maximum robust z-score across all four blocks, where the robust z-score is defined as the absolute deviation from the median divided by the scaled MAD. Using the maximum across blocks rather than the mean ensures that a single highly anomalous block (such as unusual overnight activity) is not diluted by normal activity in other blocks.</p>
+
+<p>A threshold baseline model is included for comparison. It computes the total daily sensor activity and flags a day if the total falls outside a mean plus or minus 2.5 standard deviation band learned from training days. This baseline cannot detect which time-of-day the anomaly occurred, so it misses missed-routine anomalies that leave total activity unchanged.</p>
+
+<p>Both models map their numeric score to a three-tier escalation: LOG (score below 3.0, record only), NOTIFY (score 3.0 to 6.0, soft check-in suggestion), and URGENT (score 6.0 or above, prompt attention requested). The thresholds were chosen to place mild anomalies such as a 2.5-hour afternoon rest in the NOTIFY tier and significant deviations such as a 5-hour flat period in the URGENT tier.</p>
+
+<h3>C. Privacy-by-Design Architecture</h3>
+
+<p>The privacy layer enforces four mechanisms. First, data minimization: the MinimalVerdict dataclass is the only object permitted to cross from the home-side detector to the caregiver dashboard. It carries five fields (date as ISO date only, tier, coarse block name, score rounded to one decimal, and direction). The caregiver dashboard has no access to per-minute activity, room-level counts, or exact sensor readings. The reduction ratio is 1728 to 1 compared to the raw daily sensor matrix.</p>
+
+<p>Second, a consent gate controlled by the resident: while monitoring is paused, no verdict is produced or delivered, even for URGENT-tier events. Third, a retention policy that automatically purges raw sensor data older than seven days. Fourth, an audit log that records every caregiver access to a verdict, including the viewer identity and the timestamp, so the resident can see who viewed their data and when.</p>
+
+<h3>D. Transport Layer</h3>
+
+<p>The same event stream is benchmarked over three transport configurations. The direct path uses a plain TCP loopback socket with no encryption. The VPN path uses the same socket while an operator-configured, institutionally approved VPN client is active at the OS level; the script does not control the VPN setup. The Tor path routes the socket through a SOCKS5 proxy at 127.0.0.1:9050 that the operator must start manually using the official Tor daemon. If no Tor daemon is running, the connection fails gracefully and is recorded as the project's required negative experiment.</p>
+
+
+<h2>IV. Evaluation</h2>
+
+<h3>A. Detection Performance</h3>
+
+<p>The evaluation uses 14 normal training days and 12 test days. The test schedule injects anomalies on days 1 (inactivity), 3 (night movement), 5 (missed morning routine), 7 (benign atypical, a negative/false-positive case), and 9 (mild inactivity). Days 0, 2, 4, 6, 8, 10, and 11 are normal. Table I shows the detection metrics for both models.</p>
+
+<table>
+  <thead>
+    <tr><th>Model</th><th>TP</th><th>FN</th><th>FP</th><th>TN</th><th>Precision</th><th>Recall</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>RoutineModel</td><td>4</td><td>0</td><td>1</td><td>7</td><td>0.80</td><td>1.00</td></tr>
+    <tr><td>ThresholdBaseline</td><td>2</td><td>2</td><td>1</td><td>7</td><td>0.67</td><td>0.50</td></tr>
+  </tbody>
+</table>
+<p class="caption">Table I. Detection metrics on 12 test days (4 true anomaly days: inactivity, mild inactivity, night movement, missed routine).</p>
+
+<p>The RoutineModel achieves perfect recall, detecting all four true anomaly days, including the mild inactivity day (score 3.23, NOTIFY tier) which the baseline misses entirely. The one false positive is the benign atypical day (score 37.6, URGENT tier), which represents a guest visit or sick day. This is a documented limitation: the prototype cannot distinguish between an abnormal but safe situation and an abnormal and potentially dangerous one. The baseline misses both the missed-routine anomaly (which does not change total daily activity significantly) and the mild inactivity day.</p>
+
+<h3>B. Transport Comparison</h3>
+
+<p>Three hundred sensor events are sent over each transport path and round-trip latency is measured per event. Table II summarizes the results. The Tor path failed because no Tor daemon was running during measurement; this is the required negative experiment demonstrating a documented failure case.</p>
+
+<table>
+  <thead>
+    <tr><th>Transport</th><th>Connection</th><th>Mean latency (ms)</th><th>Throughput (ev/s)</th><th>Delivery rate</th><th>Setup</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Direct</td><td>OK</td><td>0.064</td><td>15,732</td><td>100%</td><td>Trivial</td></tr>
+    <tr><td>VPN</td><td>OK</td><td>0.058</td><td>17,170</td><td>100%</td><td>Moderate</td></tr>
+    <tr><td>Tor</td><td>FAIL</td><td>N/A</td><td>N/A</td><td>0%</td><td>High</td></tr>
+  </tbody>
+</table>
+<p class="caption">Table II. Transport benchmark results. Measurements performed over loopback. VPN path uses OS-level VPN; latency difference reflects OS routing overhead variation, not encryption cost, since the destination is loopback in all cases.</p>
+
+<p>The latency values are loopback measurements and should not be interpreted as real-world estimates; they establish a reproducible baseline for comparing transport overhead. In a real deployment, Tor would add tens to hundreds of milliseconds of latency and introduce significant variability. For low-frequency alert delivery (at most a few verdicts per day), this overhead is acceptable. For high-frequency streaming, it is not.</p>
+
+<h3>C. Privacy Mechanism Experiments</h3>
+
+<p>Three privacy experiments are run as part of the evaluation. The data minimization experiment confirms that the home side holds 8,640 raw binary values per day (6 sensors times 1,440 minutes) while the caregiver side receives only 5 fields per verdict, a reduction ratio of 1,728 to 1. The consent gate experiment confirms that while the resident has paused monitoring, an URGENT-tier verdict is rejected (submit returns False) and the caregiver feed is empty. The retention experiment confirms that 7 of 15 raw days are purged when the cutoff date is set to 2025-02-08 with a 7-day maximum age.</p>
+
+
+<h2>V. Ethical Review</h2>
+
+<p>This section documents the ethical considerations relevant to the prototype.</p>
+
+<p>The system monitors only one individual (the resident), with their informed consent modeled by the ConsentGate mechanism. The resident can pause monitoring at any time and the system will not deliver any alerts while paused. No third party is monitored or sensed.</p>
+
+<p>All data in this evaluation is fully synthetic. No real person's behavior, health, or location is reflected in any sensor reading in the dataset. The stochastic generator uses a fixed seed and produces reproducible output that can be independently verified.</p>
+
+<p>The system never contacts emergency services autonomously. All alerts are delivered to a human caregiver who is responsible for deciding whether to act. The caregiver receives only a coarse minimal verdict: the date, the escalation tier, the time-of-day block, a rounded score, and a direction (more or less activity than usual). No per-minute trace, no room identity, and no sensor-level readings are transmitted.</p>
+
+<p>The audit log ensures that monitoring is transparent to the monitored person. The resident can see every access by the caregiver, including the timestamp. Asymmetric monitoring without this transparency would constitute surveillance, which is outside the ethical scope of the project.</p>
+
+<p>The threat model (documented in PRIVACY_THREAT_MODEL.md) explicitly lists threats that are not solved by the prototype: a malicious caregiver with legitimate dashboard access, a global passive network adversary capable of traffic correlation against the Tor path, and physical access to the in-home sensing device. These residual risks are stated honestly and are not claimed to be mitigated.</p>
+
+<p>The prototype does not evade any institutional security or network policies. The transport comparison script does not build, automate, or script any Tor circuit or VPN tunnel; it only measures an already-configured operator environment.</p>
+
+
+<h2>VI. Limitations and Future Work</h2>
+
+<p>Several limitations apply to the current prototype. The dataset is entirely synthetic. The anomaly thresholds (3.0 for NOTIFY, 6.0 for URGENT) were set by manual inspection and have not been validated against real clinical outcomes. The system cannot distinguish between an abnormal but safe situation (a guest visit, a sick day in bed) and an abnormal and potentially dangerous one (a fall, a medical emergency). This is the most significant safety limitation and is reflected in the false positive on the benign atypical day.</p>
+
+<p>The RoutineModel assumes a fixed daily schedule. It does not adapt to long-term changes in the resident's routine, such as changes due to illness, recovery, or seasonal variation. An extension using online learning or a sliding training window would address this.</p>
+
+<p>Future work identified in the project brief includes federated routine learning (allowing multiple homes to improve the model without sharing raw data), edge deployment on low-power hardware, and a caregiver feedback loop where the caregiver's response to an alert (check-in, no action, emergency) is used to improve the escalation thresholds.</p>
+
+
+<h2>VII. Conclusion</h2>
+
+<p>We presented Hearth, a prototype ambient-sensing system for daily routine anomaly detection with privacy-by-design. The system achieves perfect recall on four anomaly types while producing one false positive on a benign atypical day, demonstrating both the utility and the current limitation of statistical anomaly detection in smart home settings. The privacy architecture enforces a 1728-to-1 data reduction at the home/caregiver boundary through a structural schema boundary rather than policy, provides resident-controlled consent, enforces retention limits, and logs all caregiver accesses. The transport comparison documents that Tor provides the strongest anonymity guarantee of the three evaluated paths but fails gracefully when the daemon is not available, satisfying the project brief's requirement for at least one documented negative experiment. All claims in this paper are directly supported by the evaluation results produced by the accompanying reproducible evaluation script.</p>
+
+
+<h2>References</h2>
+
+<div class="refs">
+  <p>[1] D. Cook and N. Krishnan, "Activity Learning: Discovering, Recognizing, and Predicting Human Behavior from Sensor Data," Wiley, 2015. CASAS Smart Home Project, Washington State University.</p>
+  <p>[2] A. Nazerfard, B. Das, L. Holder, and D. Cook, "Conditional random fields for activity recognition in smart environments," in Proc. ACM IHI, 2010.</p>
+  <p>[3] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. Arcas, "Communication-efficient learning of deep networks from decentralized data," in Proc. AISTATS, 2017.</p>
+  <p>[4] R. Dingledine, N. Mathewson, and P. Syverson, "Tor: The second-generation onion router," in Proc. USENIX Security, 2004.</p>
+</div>
+
+<div class="disclaimer">
+  Prototype notice: This paper describes a course prototype evaluated on synthetic data over a three-week project period. It is not a clinically validated system and does not constitute medical advice. No real person is sensed. All claims are aligned with the evidence collected during the project period.
+</div>
+
+</body>
+</html>

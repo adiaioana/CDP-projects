@@ -3,213 +3,790 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hearth — Smart-Home Wellbeing Monitor</title>
+<title>Hearth — Wellbeing Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  /* ---- Clinical-calm editorial direction: warm paper, ink, restrained ---- */
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Spline+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Spline+Sans:wght@400;500;600&display=swap');
 
-  :root{
-    --paper:#f4f1ea; --ink:#23201b; --muted:#6b6459;
-    --line:#d8d2c4; --card:#fbfaf6;
-    --log:#5b8c6e; --notify:#c08a3e; --urgent:#b14a3c;
-    --accent:#3a5a7a;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:var(--paper); color:var(--ink);
-    font-family:'Spline Sans',sans-serif; line-height:1.55;
-    padding:2.5rem 1.5rem; max-width:1080px; margin:0 auto;
-  }
-  header{border-bottom:2px solid var(--ink); padding-bottom:1.2rem; margin-bottom:.4rem}
-  h1{font-family:'Fraunces',serif; font-weight:600; font-size:2.4rem; letter-spacing:-.01em}
-  h1 span{color:var(--accent); font-style:italic}
-  .sub{color:var(--muted); font-size:.95rem; margin-top:.2rem}
-  .disclaimer{
-    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--notify);
-    padding:.7rem .9rem; font-size:.82rem; color:var(--muted); margin:1.4rem 0;
-  }
-  h2{font-family:'Fraunces',serif; font-weight:500; font-size:1.4rem;
-     margin:2.2rem 0 .9rem; display:flex; align-items:baseline; gap:.6rem}
-  h2 .tag{font-family:'Spline Sans';font-size:.7rem;letter-spacing:.12em;
-     text-transform:uppercase;color:var(--muted)}
-  .grid{display:grid; gap:.8rem}
-  .days{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-  .day{
-    background:var(--card); border:1px solid var(--line); padding:.8rem;
-    border-radius:3px; position:relative;
-  }
-  .day .d{font-size:.72rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase}
-  .day .tier{font-family:'Fraunces',serif; font-size:1.15rem; font-weight:600; margin-top:.15rem}
-  .day .lbl{font-size:.78rem; color:var(--muted); margin-top:.3rem}
-  .day .score{font-size:.72rem; color:var(--muted); margin-top:.4rem; font-variant-numeric:tabular-nums}
-  .pill{display:inline-block; width:9px;height:9px;border-radius:50%;position:absolute;top:.8rem;right:.8rem}
-  .LOG{color:var(--log)} .NOTIFY{color:var(--notify)} .URGENT{color:var(--urgent)}
-  .bg-LOG{background:var(--log)} .bg-NOTIFY{background:var(--notify)} .bg-URGENT{background:var(--urgent)}
-  .fp{outline:2px dashed var(--urgent); outline-offset:2px}
-  .msg{
-    background:var(--card); border:1px solid var(--line); padding:.9rem 1rem;
-    border-radius:3px; font-size:.9rem; margin-bottom:.6rem;
-  }
-  .msg.NOTIFY{border-left:3px solid var(--notify)}
-  .msg.URGENT{border-left:3px solid var(--urgent)}
-  .msg .head{font-weight:600; font-size:.78rem; letter-spacing:.06em; text-transform:uppercase}
-  table{width:100%; border-collapse:collapse; font-size:.86rem; margin-top:.4rem}
-  th,td{text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--line)}
-  th{font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
-  td.num{font-variant-numeric:tabular-nums}
-  .ok{color:var(--log); font-weight:600} .fail{color:var(--urgent); font-weight:600}
-  .note{font-size:.8rem; color:var(--muted); margin-top:.5rem}
-  .metrics{display:flex; gap:1.4rem; flex-wrap:wrap; margin:.6rem 0}
-  .metric{background:var(--card); border:1px solid var(--line); padding:.7rem 1rem; border-radius:3px}
-  .metric .v{font-family:'Fraunces',serif; font-size:1.6rem; font-weight:600}
-  .metric .k{font-size:.72rem; color:var(--muted); letter-spacing:.06em; text-transform:uppercase}
-  footer{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
-    font-size:.78rem; color:var(--muted)}
-  .err{color:var(--muted); font-size:1rem; padding:2rem; text-align:center}
+:root {
+  --paper: #f4f1ea;
+  --ink:   #23201b;
+  --muted: #7a7168;
+  --line:  #ddd7c8;
+  --card:  #fbfaf6;
+  --log:    #4f8265;
+  --notify: #b87d2e;
+  --urgent: #a33c30;
+  --accent: #2e5274;
+  --log-bg:    rgba(79,130,101,.08);
+  --notify-bg: rgba(184,125,46,.08);
+  --urgent-bg: rgba(163,60,48,.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Spline Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 0 1.5rem 3rem;
+  max-width: 1060px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+header {
+  padding: 2rem 0 1.2rem;
+  border-bottom: 2px solid var(--ink);
+}
+header h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+header h1 em { color: var(--accent); font-style: italic; }
+header .sub { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+
+/* ── Disclaimer ── */
+.disclaimer {
+  margin: 1rem 0;
+  padding: .65rem .9rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--notify);
+  font-size: .8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── Status bar ── */
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem 1.4rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: .83rem;
+}
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-green  { background: var(--log); }
+.dot-amber  { background: var(--notify); }
+.dot-red    { background: var(--urgent); }
+.dot-grey   { background: var(--muted); }
+.status-sep { color: var(--line); user-select: none; }
+.status-val { font-weight: 600; color: var(--ink); }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin-top: 1.4rem;
+  overflow-x: auto;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: .55rem 1rem;
+  margin-bottom: -1px;
+  cursor: pointer;
+  font-family: 'Spline Sans', sans-serif;
+  font-size: .85rem;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+
+/* ── Tab panes ── */
+.tab-pane { display: none; padding-top: 1.6rem; }
+.tab-pane.active { display: block; }
+
+/* ── Section headings ── */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  margin: 0 0 1rem;
+}
+.section-head h2 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 1.3rem;
+}
+.section-head .tag {
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.divider { border: none; border-top: 1px solid var(--line); margin: 1.8rem 0; }
+
+/* ── Alert cards ── */
+.alert-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .85rem 1rem;
+  margin-bottom: .6rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .5rem 1rem;
+  align-items: start;
+}
+.alert-card.NOTIFY { border-left: 4px solid var(--notify); background: var(--notify-bg); }
+.alert-card.URGENT { border-left: 4px solid var(--urgent); background: var(--urgent-bg); }
+.alert-card .ac-tier {
+  font-size: .68rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-top: .15rem;
+}
+.alert-card .ac-tier.NOTIFY { color: var(--notify); }
+.alert-card .ac-tier.URGENT { color: var(--urgent); }
+.alert-card .ac-date { font-size: .8rem; color: var(--muted); }
+.alert-card .ac-text { font-size: .88rem; line-height: 1.5; }
+
+/* ── Quick metrics ── */
+.metric-row { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: 1.4rem; }
+.metric-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .7rem 1.1rem;
+  min-width: 120px;
+}
+.metric-box .mv {
+  font-family: 'Fraunces', serif;
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.metric-box .mk {
+  font-size: .68rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: .2rem;
+}
+
+/* ── Chart ── */
+.chart-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.2rem;
+}
+.tier-legend {
+  display: flex; flex-wrap: wrap; gap: .3rem .9rem;
+  font-size: .78rem; margin-bottom: .7rem; color: var(--muted);
+}
+.tier-legend span { display: flex; align-items: center; gap: .3rem; }
+.tl-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* ── Day grid ── */
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: .55rem;
+  margin-bottom: 1.4rem;
+}
+.day-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .65rem .75rem;
+  position: relative;
+}
+.day-card.fp { outline: 2px dashed var(--urgent); outline-offset: 1px; }
+.day-card.tp { border-color: var(--log); }
+.dc-day  { font-size: .67rem; color: var(--muted); letter-spacing: .07em; text-transform: uppercase; }
+.dc-tier { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: .35rem; margin-top: .1rem; }
+.dc-tier .dot { flex-shrink: 0; }
+.dc-label { font-size: .73rem; color: var(--muted); margin-top: .15rem; }
+.dc-score { font-size: .68rem; color: var(--muted); margin-top: .2rem; font-variant-numeric: tabular-nums; }
+
+/* ── Detection table ── */
+.det-table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-bottom: 1rem; }
+.det-table th, .det-table td { text-align: left; padding: .5rem .55rem; border-bottom: 1px solid var(--line); }
+.det-table th { font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); background: var(--paper); }
+.det-table td.num { font-variant-numeric: tabular-nums; }
+.det-table tr:last-child td { border-bottom: none; }
+
+/* ── Callout box ── */
+.callout {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .85rem 1rem;
+  font-size: .87rem;
+  line-height: 1.55;
+  margin-bottom: .8rem;
+}
+.callout.warn { border-left: 4px solid var(--notify); }
+.callout.danger { border-left: 4px solid var(--urgent); }
+.callout .cl-head { font-size: .7rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: .3rem; }
+
+/* ── Transport cards ── */
+.transport-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+@media (max-width: 680px) { .transport-grid { grid-template-columns: 1fr; } }
+.tc {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1rem;
+}
+.tc.tc-ok   { border-top: 3px solid var(--log); }
+.tc.tc-fail { border-top: 3px solid var(--urgent); opacity: .85; }
+.tc-name { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 600; }
+.tc-status { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; font-weight: 600; margin: .35rem 0 .75rem; }
+.tc-status.ok   { color: var(--log); }
+.tc-status.fail { color: var(--urgent); }
+.tc-row { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem;
+          font-size: .8rem; padding: .25rem 0; border-bottom: 1px solid var(--line); }
+.tc-row:last-of-type { border-bottom: none; }
+.tc-row .tr-k { color: var(--muted); }
+.tc-row .tr-v { font-variant-numeric: tabular-nums; font-weight: 500; }
+.tc-note { font-size: .75rem; color: var(--muted); margin-top: .65rem; line-height: 1.45; }
+.anon-bar { display: flex; gap: 3px; margin-top: .3rem; }
+.anon-bar .ab { width: 12px; height: 12px; border-radius: 2px; }
+.ab-fill { background: var(--accent); }
+.ab-empty { background: var(--line); }
+
+/* ── Privacy boundary diagram ── */
+.boundary {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  align-items: stretch;
+  margin-bottom: 1.4rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bd-side {
+  padding: 1rem 1.1rem;
+}
+.bd-home { background: rgba(79,130,101,.06); border-right: 1px solid var(--line); }
+.bd-care { background: rgba(46,82,116,.06); border-left: 1px solid var(--line); }
+.bd-side .bs-label {
+  font-size: .68rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: .6rem;
+}
+.bd-side .bs-item {
+  font-size: .8rem; padding: .2rem 0;
+  border-bottom: 1px dashed var(--line);
+  color: var(--muted);
+}
+.bd-side .bs-item:last-child { border-bottom: none; }
+.bd-middle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem .8rem;
+  gap: .4rem;
+}
+.bd-arrow { font-size: 1.4rem; color: var(--accent); }
+.bd-badge {
+  font-size: .68rem;
+  text-align: center;
+  line-height: 1.4;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* ── Mechanism cards ── */
+.mech-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+@media (max-width: 680px) { .mech-grid { grid-template-columns: 1fr; } }
+.mc {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1rem;
+}
+.mc-id { font-size: .67rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.mc-title { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 600; margin: .2rem 0 .55rem; }
+.mc-val { font-family: 'Fraunces', serif; font-size: 2.1rem; font-weight: 600; color: var(--accent); line-height: 1; }
+.mc-unit { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+.mc-desc { font-size: .78rem; color: var(--muted); margin-top: .6rem; line-height: 1.45; }
+.mc-result {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .78rem; font-weight: 600; margin-top: .7rem;
+}
+.mc-result.pass { color: var(--log); }
+.mc-result.fail { color: var(--urgent); }
+
+/* ── Audit table ── */
+.audit-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+.audit-table th, .audit-table td { text-align: left; padding: .5rem .55rem; border-bottom: 1px solid var(--line); }
+.audit-table th { font-size: .67rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.audit-table tr:last-child td { border-bottom: none; }
+.audit-table tbody tr:hover { background: rgba(0,0,0,.02); }
+.t-LOG    { color: var(--log);    font-weight: 600; font-size: .8rem; }
+.t-NOTIFY { color: var(--notify); font-weight: 600; font-size: .8rem; }
+.t-URGENT { color: var(--urgent); font-weight: 600; font-size: .8rem; }
+
+/* ── Misc ── */
+.note { font-size: .78rem; color: var(--muted); line-height: 1.5; margin-top: .5rem; }
+.ok-text  { color: var(--log);    font-weight: 600; }
+.fail-text{ color: var(--urgent); font-weight: 600; }
+footer {
+  margin-top: 2.5rem; padding-top: .9rem;
+  border-top: 1px solid var(--line);
+  font-size: .75rem; color: var(--muted);
+}
+.err { color: var(--muted); padding: 3rem; text-align: center; font-size: .95rem; }
+code { font-family: 'Courier New', monospace; background: var(--line); padding: .1em .3em; border-radius: 2px; font-size: .85em; }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>Hearth <span>— wellbeing monitor</span></h1>
+  <h1>Hearth <em>— wellbeing monitor</em></h1>
   <div class="sub">Ambient-sensor anomaly review · caregiver prototype dashboard</div>
 </header>
 
 <div class="disclaimer">
-  <strong>Prototype notice.</strong> This is a course prototype evaluated on
-  synthetic data over a short project period. It is <em>not</em> a clinically
-  validated medical device and does not contact emergency services. Alerts are
-  decision-support signals for a human caregiver, not diagnoses.
+  <strong>Prototype notice.</strong> Course prototype on synthetic data only.
+  <em>Not</em> a clinically validated device; does not contact emergency services.
+  Alerts are decision-support signals for a human caregiver, not diagnoses.
 </div>
+
+<div id="status-bar" class="status-bar">
+  <span class="status-badge"><span class="dot dot-green"></span><span class="status-val">System active</span></span>
+  <span class="status-sep">·</span>
+  <span class="status-badge" id="sb-alerts"></span>
+  <span class="status-sep">·</span>
+  <span class="status-badge" id="sb-recall"></span>
+  <span class="status-sep">·</span>
+  <span class="status-badge" id="sb-privacy"></span>
+</div>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="overview"   onclick="switchTab('overview',this)">Overview</button>
+  <button class="tab-btn"        data-tab="detection"  onclick="switchTab('detection',this)">Detection</button>
+  <button class="tab-btn"        data-tab="transport"  onclick="switchTab('transport',this)">Transport</button>
+  <button class="tab-btn"        data-tab="privacy"    onclick="switchTab('privacy',this)">Privacy</button>
+  <button class="tab-btn"        data-tab="audit"      onclick="switchTab('audit',this)">Audit log</button>
+</nav>
 
 <div id="app"><div class="err">Loading evaluation.json…</div></div>
 
 <footer>
-  Hearth prototype · privacy-by-design: ambient binary sensors only, no
-  cameras, no microphones, no personally identifying data. Synthetic dataset;
-  no real person is sensed.
+  Hearth prototype · privacy-by-design: binary ambient sensors only,
+  no cameras, no microphones, no PII. Synthetic dataset — no real person is sensed.
 </footer>
 
 <script>
-const TIER_ORDER = {LOG:0, NOTIFY:1, URGENT:2};
+let _globalData = null;
+let _chartDrawn  = false;
 
-function render(data){
-  const det = data.detection, tr = data.transport;
-  const days = det.per_day;
-  const rm = det.routine_model, fp = det.false_positive_analysis;
-  let h = '';
-
-  // ---- Escalation feed (built from the privacy boundary) ----
-  h += `<h2>Caregiver feed <span class="tag">via privacy boundary</span></h2>`;
-  const feed = det.caregiver_feed || [];
-  if(!feed.length){
-    h += `<div class="msg">No notifications. All reviewed days within routine.</div>`;
-  } else {
-    for(const f of feed){
-      h += `<div class="msg ${f.tier}">
-        <div class="head ${f.tier}">${f.tier==='URGENT'
-          ?'Attention requested':'Check-in suggested'}</div>
-        <div>${f.text}</div></div>`;
-    }
+/* ── Tab switching ── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'detection' && !_chartDrawn && _globalData) {
+    _chartDrawn = true;
+    requestAnimationFrame(() => initChart(_globalData));
   }
-
-  // ---- Day grid ----
-  h += `<h2>Daily review <span class="tag">routine model</span></h2>`;
-  h += `<div class="grid days">`;
-  for(const d of days){
-    const isFP = (d.routine_tier!=='LOG') && !d.true_event;
-    h += `<div class="day ${isFP?'fp':''}">
-      <span class="pill bg-${d.routine_tier}"></span>
-      <div class="d">Day ${d.day}</div>
-      <div class="tier ${d.routine_tier}">${d.routine_tier}</div>
-      <div class="lbl">${d.label.replace('_',' ')}</div>
-      <div class="score">score ${d.routine_score} · base ${d.baseline_score}</div>
-    </div>`;
-  }
-  h += `</div>`;
-
-  // ---- Model performance ----
-  h += `<h2>Model performance <span class="tag">routine vs baseline</span></h2>`;
-  const bm = det.baseline_model;
-  h += `<div class="metrics">
-    <div class="metric"><div class="v">${rm.recall}</div><div class="k">routine recall</div></div>
-    <div class="metric"><div class="v">${rm.precision}</div><div class="k">routine precision</div></div>
-    <div class="metric"><div class="v">${bm.recall}</div><div class="k">baseline recall</div></div>
-    <div class="metric"><div class="v">${bm.precision}</div><div class="k">baseline precision</div></div>
-  </div>`;
-  h += `<div class="msg ${fp.routine_tier_on_benign==='LOG'?'':'URGENT'}">
-    <div class="head">False-positive case · benign day ${fp.benign_day_index}</div>
-    <div>A guest-visit / sick day is unusual but <em>not</em> a safety event.
-    The routine model escalated it to <strong>${fp.routine_tier_on_benign}</strong>
-    and the baseline to <strong>${fp.baseline_tier_on_benign}</strong> — both
-    false positives. This documented failure case shows the prototype cannot
-    yet separate "abnormal but safe" from "abnormal and dangerous."</div>
-  </div>`;
-
-  // ---- Transport ----
-  h += `<h2>Stream transport <span class="tag">direct · vpn · tor</span></h2>`;
-  h += `<table><thead><tr><th>Transport</th><th>Connection</th>
-    <th>Latency (mean)</th><th>Throughput</th><th>Anonymity</th></tr></thead><tbody>`;
-  for(const k of ['direct','vpn','tor']){
-    const m = tr[k];
-    h += `<tr>
-      <td>${k.toUpperCase()}</td>
-      <td>${m.connection_success
-            ?'<span class="ok">OK</span>'
-            :'<span class="fail">FAIL</span>'}</td>
-      <td class="num">${m.latency_ms_mean!=null?m.latency_ms_mean+' ms':'—'}</td>
-      <td class="num">${m.throughput_eps!=null?m.throughput_eps+' ev/s':'—'}</td>
-      <td>${(m.anonymity||'').split(' --')[0]}</td>
-    </tr>`;
-  }
-  h += `</tbody></table>`;
-  if(!tr.tor.connection_success){
-    h += `<div class="note"><strong>Documented failure case:</strong>
-      the Tor path failed (${tr.tor.error}) because no local Tor daemon was
-      running during this measurement. Recorded, not hidden — see the
-      evaluation report's negative-results section.</div>`;
-  }
-
-  // ---- Privacy controls ----
-  const pv = data.privacy;
-  if(pv){
-    const dm = pv.data_minimization, ce = pv.consent_gate_experiment,
-          re = pv.retention_experiment;
-    h += `<h2>Privacy by design <span class="tag">enforced controls</span></h2>`;
-    h += `<div class="metrics">
-      <div class="metric"><div class="v">${dm.reduction_ratio}×</div>
-        <div class="k">data reduction at boundary</div></div>
-      <div class="metric"><div class="v">${dm.caregiver_side_fields_per_verdict}</div>
-        <div class="k">fields sent to caregiver</div></div>
-      <div class="metric"><div class="v">${re.purge_report.purged_count}</div>
-        <div class="k">raw days purged (retention)</div></div>
-      <div class="metric"><div class="v">${a.audit_summary.total_accesses}</div>
-        <div class="k">audited caregiver accesses</div></div>
-    </div>`;
-    h += `<div class="msg">
-      <div class="head">Home / caregiver boundary</div>
-      <div>The detector runs home-side on raw sensor data
-      (${dm.home_side_raw_values_per_day} values/day). Only a minimal
-      verdict crosses to this caregiver view — per-minute activity and
-      room-level counts never leave the home.</div></div>`;
-    h += `<div class="msg ${ce.feed_size_when_paused===0?'':'URGENT'}">
-      <div class="head">Consent gate · negative case</div>
-      <div>When the resident pauses monitoring, an URGENT-tier verdict is
-      rejected (accepted = ${ce.submit_accepted_while_paused}) and the
-      caregiver feed is empty (size = ${ce.feed_size_when_paused}). The
-      resident's consent overrides alert delivery.</div></div>`;
-  }
-
-  document.getElementById('app').innerHTML = h;
 }
 
-fetch('../results/evaluation.json')
-  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+/* ── Tier helpers ── */
+const TIER_COLOR = { LOG: '#4f8265', NOTIFY: '#b87d2e', URGENT: '#a33c30' };
+const TIER_FAINT = { LOG: 'rgba(79,130,101,.45)', NOTIFY: 'rgba(184,125,46,.45)', URGENT: 'rgba(163,60,48,.45)' };
+function tierDot(tier) {
+  return `<span class="dot" style="width:8px;height:8px;background:${TIER_COLOR[tier] || '#ccc'};border-radius:50%;display:inline-block"></span>`;
+}
+function fmtLabel(l) { return l.replace(/_/g, ' '); }
+function fmtNum(n) { const v = Number(n); return Number.isInteger(v) ? v.toFixed(1) : v; }
+function stripPrefix(text) { return text.replace(/^\[.*?\]\s*/, ''); }
+
+/* ── Chart ── */
+function initChart(data) {
+  const days = data.detection.per_day;
+  const ctx  = document.getElementById('scoresChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days.map(d => `D${d.day}`),
+      datasets: [
+        {
+          label: 'Routine score',
+          data: days.map(d => Math.min(d.routine_score, 20)),
+          backgroundColor: days.map(d => TIER_FAINT[d.routine_tier]),
+          borderColor:     days.map(d => TIER_COLOR[d.routine_tier]),
+          borderWidth: 1.5,
+          order: 2,
+          hidden: false,
+        },
+        {
+          label: 'Baseline score',
+          data: days.map(d => d.baseline_score),
+          backgroundColor: 'rgba(120,110,95,.2)',
+          borderColor:     'rgba(120,110,95,.5)',
+          borderWidth: 1,
+          order: 3,
+        },
+        {
+          label: 'NOTIFY threshold (3.0)',
+          type: 'line',
+          data: Array(days.length).fill(3.0),
+          borderColor: 'rgba(184,125,46,.7)',
+          borderDash: [5, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          order: 1,
+        },
+        {
+          label: 'URGENT threshold (6.0)',
+          type: 'line',
+          data: Array(days.length).fill(6.0),
+          borderColor: 'rgba(163,60,48,.7)',
+          borderDash: [5, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: {
+            font: { family: 'Spline Sans', size: 11 }, color: '#7a7168',
+            filter: item => item.text !== 'Routine score',
+          }
+        },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const d = days[items[0].dataIndex];
+              return `Day ${d.day} — ${fmtLabel(d.label)}`;
+            },
+            label: item => {
+              const d = days[item.dataIndex];
+              if (item.datasetIndex === 0) return ` Routine: ${d.routine_score} (${d.routine_tier})`;
+              if (item.datasetIndex === 1) return ` Baseline: ${d.baseline_score}`;
+              return '';
+            },
+            afterLabel: items => {
+              if (items.datasetIndex !== 0) return;
+              const d = days[items.dataIndex];
+              return [`  Block: ${d.verdict_block} · ${d.verdict_direction}`, `  True event: ${d.true_event}`];
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 20,
+          title: { display: true, text: 'Anomaly score (capped at 20)', color: '#7a7168', font: { size: 11 } },
+          grid: { color: 'rgba(220,215,200,.5)' },
+          ticks: { color: '#7a7168' },
+        },
+        x: {
+          ticks: { color: '#7a7168', font: { size: 11 } },
+          grid: { color: 'rgba(220,215,200,.3)' },
+        },
+      },
+    },
+  });
+}
+
+/* ── Main render ── */
+function render(data) {
+  _globalData = data;
+  const det = data.detection, tr = data.transport, pv = data.privacy;
+  const days = det.per_day, feed = det.caregiver_feed || [];
+  const rm = det.routine_model, bm = det.baseline_model, fp = det.false_positive_analysis;
+  const dm = pv.data_minimization, ce = pv.consent_gate_experiment, re = pv.retention_experiment;
+
+  /* status bar */
+  const urgentCount  = feed.filter(f => f.tier === 'URGENT').length;
+  const notifyCount  = feed.filter(f => f.tier === 'NOTIFY').length;
+  document.getElementById('sb-alerts').innerHTML  =
+    `<span class="dot dot-red"></span><span class="status-val">${urgentCount} urgent</span>&nbsp;
+     <span class="dot dot-amber"></span><span class="status-val">${notifyCount} check-in</span>`;
+  document.getElementById('sb-recall').innerHTML  =
+    `Recall <span class="status-val">${fmtNum(rm.recall)}</span> · Precision <span class="status-val">${fmtNum(rm.precision)}</span>`;
+  document.getElementById('sb-privacy').innerHTML =
+    `Data reduction <span class="status-val">${dm.reduction_ratio}×</span>`;
+
+  /* ── pane: overview ── */
+  let ov = '';
+  ov += sectionHead('Caregiver alerts', 'via privacy boundary');
+  if (!feed.length) {
+    ov += `<div class="callout">No notifications. All reviewed days within routine.</div>`;
+  } else {
+    for (const f of feed) {
+      const title = f.tier === 'URGENT' ? 'Attention requested' : 'Check-in suggested';
+      ov += `<div class="alert-card ${f.tier}">
+        <div>
+          <div class="ac-tier ${f.tier}">${title}</div>
+          <div class="ac-date">${f.date}</div>
+        </div>
+        <div class="ac-text">${stripPrefix(f.text)}</div>
+      </div>`;
+    }
+  }
+  ov += `<hr class="divider">`;
+  ov += sectionHead('At a glance', 'system summary');
+  ov += `<div class="metric-row">
+    <div class="metric-box"><div class="mv">${feed.length}</div><div class="mk">Total alerts sent</div></div>
+    <div class="metric-box"><div class="mv">${rm.tp + rm.fn}</div><div class="mk">True anomaly days</div></div>
+    <div class="metric-box"><div class="mv">${fmtNum(rm.recall)}</div><div class="mk">RoutineModel recall</div></div>
+    <div class="metric-box"><div class="mv">${fmtNum(rm.precision)}</div><div class="mk">RoutineModel precision</div></div>
+    <div class="metric-box"><div class="mv">${dm.reduction_ratio}×</div><div class="mk">Data reduction</div></div>
+  </div>`;
+
+  /* ── pane: detection ── */
+  let de = '';
+  de += sectionHead('Anomaly scores', 'per test day');
+  de += `<div class="tier-legend">
+    <span>${tdot('LOG')} LOG (score &lt; 3.0)</span>
+    <span>${tdot('NOTIFY')} NOTIFY (3.0 – 6.0)</span>
+    <span>${tdot('URGENT')} URGENT (≥ 6.0)</span>
+    <span><span class="tl-dot" style="background:rgba(120,110,95,.4)"></span> Baseline</span>
+    <span style="color:var(--muted); letter-spacing:.05em">– – NOTIFY / URGENT thresholds</span>
+  </div>`;
+  const clipped = days.filter(d => d.routine_score > 20);
+  const clipNote = clipped.length
+    ? `<p class="note" style="margin-top:.4rem">Chart capped at 20 for readability. Clipped: ${clipped.map(d=>`Day ${d.day} (${d.routine_score})`).join(', ')}.</p>`
+    : '';
+  de += `<div class="chart-box"><canvas id="scoresChart" height="95"></canvas>${clipNote}</div>`;
+
+  de += `<hr class="divider">`;
+  de += sectionHead('Test days', '12 days · 4 true anomaly types');
+  de += `<div class="day-grid">`;
+  for (const d of days) {
+    const isFP = d.routine_tier !== 'LOG' && !d.true_event;
+    const isTP = d.routine_tier !== 'LOG' && d.true_event;
+    de += `<div class="day-card ${isFP ? 'fp' : ''} ${isTP ? 'tp' : ''}">
+      <div class="dc-day">Day ${d.day}</div>
+      <div class="dc-tier">${tierDot(d.routine_tier)}<span class="${d.routine_tier === 'LOG' ? 't-LOG' : d.routine_tier === 'NOTIFY' ? 't-NOTIFY' : 't-URGENT'}">${d.routine_tier}</span></div>
+      <div class="dc-label">${fmtLabel(d.label)}</div>
+      <div class="dc-score">r ${d.routine_score} · b ${d.baseline_score}</div>
+    </div>`;
+  }
+  de += `</div>`;
+  de += `<p class="note" style="margin-bottom:1rem">Green border = true positive · Dashed red outline = false positive</p>`;
+
+  de += `<hr class="divider">`;
+  de += sectionHead('Model comparison', 'RoutineModel vs ThresholdBaseline');
+  de += `<table class="det-table">
+    <thead><tr><th>Model</th><th class="num">TP</th><th class="num">FN</th>
+      <th class="num">FP</th><th class="num">TN</th>
+      <th class="num">Precision</th><th class="num">Recall</th></tr></thead>
+    <tbody>
+      <tr><td>RoutineModel</td><td class="num">${rm.tp}</td><td class="num">${rm.fn}</td>
+        <td class="num">${rm.fp}</td><td class="num">${rm.tn}</td>
+        <td class="num"><strong>${fmtNum(rm.precision)}</strong></td><td class="num"><strong>${fmtNum(rm.recall)}</strong></td></tr>
+      <tr><td>ThresholdBaseline</td><td class="num">${bm.tp}</td><td class="num">${bm.fn}</td>
+        <td class="num">${bm.fp}</td><td class="num">${bm.tn}</td>
+        <td class="num">${fmtNum(bm.precision)}</td><td class="num">${fmtNum(bm.recall)}</td></tr>
+    </tbody></table>`;
+  const fpSev = fp.routine_tier_on_benign !== 'LOG' ? 'warn' : '';
+  de += `<div class="callout ${fpSev}" style="margin-top:.8rem">
+    <div class="cl-head">False-positive analysis · benign day ${fp.benign_day_index}</div>
+    A guest-visit / sick day (unusual, <em>not</em> a safety event) was escalated to
+    <strong>${fp.routine_tier_on_benign}</strong> by RoutineModel and
+    <strong>${fp.baseline_tier_on_benign}</strong> by baseline.
+    This is the required negative case: the prototype cannot yet separate
+    "abnormal but safe" from "abnormal and dangerous."
+  </div>`;
+
+  /* ── pane: transport ── */
+  let tr2 = '';
+  tr2 += sectionHead('Transport comparison', 'direct · vpn · tor');
+  tr2 += `<div class="transport-grid">`;
+  for (const key of ['direct', 'vpn', 'tor']) {
+    const m = tr[key];
+    const ok = m.connection_success;
+    const anonLevel = key === 'direct' ? 0 : key === 'vpn' ? 1 : 3;
+    tr2 += `<div class="tc ${ok ? 'tc-ok' : 'tc-fail'}">
+      <div class="tc-name">${key.toUpperCase()}</div>
+      <div class="tc-status ${ok ? 'ok' : 'fail'}">
+        <span class="dot ${ok ? 'dot-green' : 'dot-red'}"></span>
+        ${ok ? 'Connected' : 'Failed'}
+      </div>
+      <div class="tc-row"><span class="tr-k">Latency (mean)</span><span class="tr-v">${m.latency_ms_mean != null ? m.latency_ms_mean + ' ms' : '—'}</span></div>
+      <div class="tc-row"><span class="tr-k">Throughput</span><span class="tr-v">${m.throughput_eps != null ? m.throughput_eps + ' ev/s' : '—'}</span></div>
+      <div class="tc-row"><span class="tr-k">Delivery rate</span><span class="tr-v">${m.delivery_rate != null ? (m.delivery_rate * 100).toFixed(0) + '%' : '—'}</span></div>
+      <div class="tc-row"><span class="tr-k">Setup</span><span class="tr-v">${key === 'direct' ? 'Trivial' : key === 'vpn' ? 'Moderate' : 'High'}</span></div>
+      <div class="tc-row" style="border-bottom:none">
+        <span class="tr-k">Anonymity</span>
+        <span class="anon-bar">
+          ${[...Array(3)].map((_,i)=>`<span class="ab ${i<anonLevel?'ab-fill':'ab-empty'}"></span>`).join('')}
+        </span>
+      </div>
+      <div class="tc-note">${m.error ? `<span class="fail-text">Error:</span> ${m.error.split(':').slice(1).join(':').trim()}` : (m.threat_model || '').split('.')[0] + '.'}</div>
+    </div>`;
+  }
+  tr2 += `</div>`;
+  tr2 += `<div class="callout warn">
+    <div class="cl-head">Documented failure case — Tor</div>
+    No local Tor daemon was running during measurement. Connection refused at SOCKS5 127.0.0.1:9050.
+    Recorded as the brief's required negative/failure experiment. Setup complexity is highest;
+    a global passive adversary or traffic-correlation attack remains a residual risk even when Tor is active.
+  </div>`;
+  tr2 += `<div class="callout" style="margin-top:.7rem">
+    <div class="cl-head">Threat-model summary</div>
+    <strong>Direct</strong> — no confidentiality; LAN observer reads all traffic.
+    <strong>VPN</strong> — encrypts home→exit hop; provider sees metadata (not anonymity, but meaningful confidentiality).
+    <strong>Tor</strong> — multi-hop onion routing; strongest against local observers; provider cannot correlate.
+  </div>`;
+
+  /* ── pane: privacy ── */
+  let pr = '';
+  pr += sectionHead('Home / Caregiver boundary', 'data never leaves home-side raw');
+  pr += `<div class="boundary">
+    <div class="bd-side bd-home">
+      <div class="bs-label">Home side</div>
+      <div class="bs-item">Motion sensors (binary)</div>
+      <div class="bs-item">${dm.home_side_raw_values_per_day} raw values / day</div>
+      <div class="bs-item">RoutineModel runs here</div>
+      <div class="bs-item">Raw data never sent out</div>
+    </div>
+    <div class="bd-middle">
+      <div class="bd-arrow">→</div>
+      <div class="bd-badge">MinimalVerdict<br>only 5 fields</div>
+    </div>
+    <div class="bd-side bd-care">
+      <div class="bs-label">Caregiver side</div>
+      <div class="bs-item">Date (ISO only)</div>
+      <div class="bs-item">Tier (LOG / NOTIFY / URGENT)</div>
+      <div class="bs-item">Block (coarse: night/morning…)</div>
+      <div class="bs-item">Score (rounded to 0.1)</div>
+    </div>
+  </div>`;
+
+  pr += `<hr class="divider">`;
+  pr += sectionHead('Enforced mechanisms', 'C1 · C2 · C3');
+  pr += `<div class="mech-grid">
+    <div class="mc">
+      <div class="mc-id">C1 · Data minimisation</div>
+      <div class="mc-title">Boundary reduction</div>
+      <div class="mc-val">${dm.reduction_ratio}×</div>
+      <div class="mc-unit">fewer fields at caregiver side</div>
+      <div class="mc-desc">Home holds ${dm.home_side_raw_values_per_day} values/day.
+        Only ${dm.caregiver_side_fields_per_verdict} fields cross the boundary.
+        Per-minute activity and room-level counts are structurally blocked by
+        the MinimalVerdict schema.</div>
+    </div>
+    <div class="mc">
+      <div class="mc-id">C2 · Consent gate</div>
+      <div class="mc-title">Resident control</div>
+      <div class="mc-val">${ce.feed_size_when_paused}</div>
+      <div class="mc-unit">alerts delivered while paused</div>
+      <div class="mc-desc">While monitoring is paused, URGENT verdict was rejected
+        (accepted = ${ce.submit_accepted_while_paused}).
+        The resident's consent overrides alert delivery — even for the highest tier.</div>
+      <div class="mc-result pass">✓ Consent gate enforced</div>
+    </div>
+    <div class="mc">
+      <div class="mc-id">C3 · Retention policy</div>
+      <div class="mc-title">Data purge</div>
+      <div class="mc-val">${re.purge_report.purged_count}</div>
+      <div class="mc-unit">raw days purged at cutoff</div>
+      <div class="mc-desc">Max age: ${re.purge_report.max_age_days} days.
+        Cutoff: ${re.purge_report.cutoff}.
+        ${re.days_before_purge} days → ${re.days_after_purge} kept.
+        Raw per-minute sensor data is the most sensitive asset and must not
+        accumulate indefinitely.</div>
+    </div>
+  </div>`;
+
+  /* ── pane: audit ── */
+  let au = '';
+  au += sectionHead('Audit log', 'every caregiver access is recorded');
+  au += `<div class="metric-row">
+    <div class="metric-box"><div class="mv">${det.audit_summary.total_accesses}</div><div class="mk">Total accesses</div></div>
+    <div class="metric-box"><div class="mv">${det.audit_summary.viewers.join(', ')}</div><div class="mk">Viewers</div></div>
+  </div>`;
+  const entries = det.audit_entries || [];
+  if (entries.length) {
+    au += `<table class="audit-table">
+      <thead><tr><th>#</th><th>Verdict date</th><th>Tier</th><th>Viewer</th><th>Accessed at</th></tr></thead>
+      <tbody>`;
+    entries.forEach((e, i) => {
+      au += `<tr>
+        <td>${i + 1}</td>
+        <td>${e.verdict_date}</td>
+        <td><span class="t-${e.verdict_tier}">${e.verdict_tier}</span></td>
+        <td>${e.viewer}</td>
+        <td style="font-size:.78rem;color:var(--muted)">${e.ts}</td>
+      </tr>`;
+    });
+    au += `</tbody></table>`;
+  } else {
+    au += `<p class="note">No entries. Regenerate <code>evaluation.json</code> to populate.</p>`;
+  }
+  au += `<p class="note" style="margin-top:.8rem">The resident is entitled to read this log. Asymmetric monitoring
+    without transparency would constitute surveillance, which the project brief explicitly forbids.</p>`;
+
+  /* ── Inject panes ── */
+  document.getElementById('app').innerHTML = `
+    <div class="tab-pane active" id="pane-overview">${ov}</div>
+    <div class="tab-pane"        id="pane-detection">${de}</div>
+    <div class="tab-pane"        id="pane-transport">${tr2}</div>
+    <div class="tab-pane"        id="pane-privacy">${pr}</div>
+    <div class="tab-pane"        id="pane-audit">${au}</div>
+  `;
+}
+
+/* ── Helpers ── */
+function sectionHead(title, tag) {
+  return `<div class="section-head"><h2>${title}</h2><span class="tag">${tag}</span></div>`;
+}
+function tdot(tier) {
+  return `<span class="tl-dot" style="background:${TIER_COLOR[tier]}"></span>`;
+}
+
+/* ── Bootstrap ── */
+fetch('./evaluation.json')
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(render)
-  .catch(e=>{
+  .catch(e => {
     document.getElementById('app').innerHTML =
-      `<div class="err">Could not load <code>results/evaluation.json</code>
-       (${e.message}).<br>Run <code>python3 src/evaluate.py</code> first,
-       then open this file from a local server.</div>`;
+      `<div class="err">Could not load <code>evaluation.json</code> (${e.message}).<br>
+       Run <code>python evaluate.py</code> first, then serve with
+       <code>python -m http.server 8000</code>.</div>`;
   });
 </script>
 </body>
