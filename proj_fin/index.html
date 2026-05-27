@@ -182,7 +182,7 @@ function render(data){
         <div class="k">fields sent to caregiver</div></div>
       <div class="metric"><div class="v">${re.purge_report.purged_count}</div>
         <div class="k">raw days purged (retention)</div></div>
-      <div class="metric"><div class="v">${a.audit_summary.total_accesses}</div>
+      <div class="metric"><div class="v">${det.audit_summary.total_accesses}</div>
         <div class="k">audited caregiver accesses</div></div>
     </div>`;
     h += `<div class="msg">
@@ -202,13 +202,13 @@ function render(data){
   document.getElementById('app').innerHTML = h;
 }
 
-fetch('../results/evaluation.json')
+fetch('results/evaluation.json')
   .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
   .then(render)
   .catch(e=>{
     document.getElementById('app').innerHTML =
       `<div class="err">Could not load <code>results/evaluation.json</code>
-       (${e.message}).<br>Run <code>python3 src/evaluate.py</code> first,
+       (${e.message}).<br>Run <code>python evaluate.py</code> first,
        then open this file from a local server.</div>`;
   });
 </script>

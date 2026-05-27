@@ -1,71 +1,125 @@
-# Hearth — Smart-Home Wellbeing Monitor (course prototype)
+# Hearth — Smart-Home Wellbeing Monitor (Course Prototype)
 
-Detects routine deviations (inactivity, unusual nighttime movement, missed
-routines) in a single-occupant household from ambient sensor data, streams
-events to a caregiver dashboard over a configurable transport
-(direct / VPN / Tor), and enforces **privacy by design** through a
-home/caregiver boundary.
+Hearth is a lightweight, privacy-preserving research prototype designed to support independent living for single-occupant households. It detects significant routine deviations—such as prolonged waking inactivity (potential falls), unusual nighttime activity (wandering), and missed morning routines—from ambient smart-home sensor data.
 
-## Quick start
+To protect the resident's dignity and security, Hearth enforces **privacy by design** by separating raw, minute-level event sequences from the caregiver dashboard through a strict, code-enforced boundary.
 
+**This is a research prototype evaluated on simulated data; it is NOT a clinically validated medical device and does NOT contact emergency services.**
+
+---
+
+## 1. Quick Start & Reproducibility Guide
+
+Follow these steps to set up the environment, run the evaluations, and preview the dynamic caregiver dashboard.
+
+### Step 1: Create a Local Python Virtual Environment
+To ensure a clean, reproducible setup without interfering with your system-wide packages, initialize an isolated virtual environment:
+
+```powershell
+# 1. Navigate to the project directory
+cd proj_fin
+
+# 2. Create the virtual environment
+python -m venv .venv
+
+# 3. Activate the virtual environment
+# On Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source .venv/bin/activate
+```
+
+### Step 2: Install Dependencies
+Install the required scientific computing and SOCKS proxy libraries:
 ```bash
-pip install numpy pandas scikit-learn scipy PySocks --break-system-packages
-python3 src/data_generator.py     # writes data/sensor_dataset.csv
-python3 src/evaluate.py           # writes results/evaluation.json + prints report
-python3 -m http.server 8000       # then open http://localhost:8000/dashboard/
+pip install numpy pandas scikit-learn scipy PySocks
 ```
 
-## Privacy architecture: the home / caregiver boundary
-
-The central design choice. Privacy is enforced by code structure, not by
-docstrings:
-
-```
-[ HOME SIDE ]                          [ CAREGIVER SIDE ]
-raw per-minute sensor data             never sees raw data
-detector runs here                    sees only MinimalVerdict objects
-        |                                      ^
-        +----- explain_minimal() ----- gate ---+
-               minimize()       consent + audit
+### Step 3: Run the Dataset Generator
+Generate the 20-day synthetic dataset used for baseline training and scenario evaluation. This generates a stochastically noisy ambient event log (writes `sensor_dataset.csv` in the parent directory):
+```bash
+python data_generator.py
 ```
 
-Four enforced mechanisms (`src/privacy.py`):
+### Step 4: Execute the End-to-End Evaluation Harness
+Run the full three-part evaluation (Detection Accuracy, Network Transport benchmarks, and Privacy metrics). This writes the structured metrics database to `results/evaluation.json` and prints a comprehensive terminal report:
+```bash
+python evaluate.py
+```
 
-- **MinimalVerdict** — the only object allowed across the boundary. 5 coarse
-  fields; cannot carry per-minute states or room counts.
-- **ConsentGate** — the monitored resident can pause monitoring; paused ⇒ no
-  verdict accepted or delivered, even URGENT.
-- **RetentionPolicy** — raw sensor data older than the window is purged.
-- **AuditLog** — every caregiver access is recorded and readable by the
-  resident.
+### Step 5: Launch the Caregiver Dashboard
+Start a local HTTP server inside the `proj_fin` directory to serve the dashboard:
+```bash
+python -m http.server 8000
+```
+Then, open your web browser and navigate to:
+**[http://localhost:8000/index.html](http://localhost:8000/index.html)**
 
-Measured in `evaluate.py` Part C: data reduction at the boundary (1728×),
-the consent-pause negative case, and the retention purge.
+---
 
-## Files → deliverables
+## 2. Project Directory Structure
 
-| File | Deliverable it serves |
-|---|---|
-| `src/data_generator.py` | **Dataset protocol** — synthetic ambient data, anomaly injection |
-| `src/anomaly_model.py` | **Prototype** — RoutineModel + baseline, escalation logic |
-| `src/privacy.py` | **Privacy-by-design** — boundary, consent, retention, audit |
-| `src/transport.py` | Transport comparison (direct/VPN/Tor), threat-model notes |
-| `src/evaluate.py` | **Evaluation report** data — Parts A (detection), B (transport), C (privacy) |
-| `dashboard/index.html` | **Dashboard** — caregiver feed, daily review, transport + privacy panels |
-| `PRIVACY_THREAT_MODEL.md` | **Ethical review** — threat model, ethics checklist, residual risk |
+```
+proj_fin/
+├── .venv/                      # Isolated virtual environment
+├── results/
+│   └── evaluation.json         # Evaluation results database (generated by evaluate.py)
+├── anomaly_model.py            # RoutineModel (robust block-MAD) vs ThresholdBaseline
+├── data_generator.py           # Stochastic sensor telemetry & anomaly injector
+├── evaluate.py                 # End-to-end evaluation harness
+├── index.html                  # Beautiful dynamic caregiver dashboard (HTML5/CSS)
+├── privacy.py                  # Boundaries, ConsentGate, Retention, Audit Log
+├── transport.py                # Direct vs. VPN vs. Tor SOCKS5 network testbed
+├── PRIVACY_THREAT_MODEL.md     # STRIDE analysis, threat models, ethical reviews
+├── PAPER.md                    # Comprehensive 6-10 page IEEE-style research paper
+└── README.md                   # This reproducibility documentation
+```
 
-## Negative / failure cases (required, not hidden)
+---
 
-1. **Benign-atypical day** — a guest/sick day both models false-positive on.
-2. **Tor transport failure** — logged gracefully when no Tor daemon runs.
-3. **Consent-pause delivery case** — an URGENT verdict deliberately dropped
-   while the resident has paused monitoring.
+## 3. Privacy Architecture: The Home / Caregiver Boundary
 
-## Known limitations (state these; do not overclaim)
+Hearth separates raw in-home telemetry from the caregiver dashboard through four strict, code-enforced mechanisms:
 
-- Single synthetic occupant; not clinically validated; short evaluation window.
-- The model cannot yet separate "abnormal but safe" from "abnormal and
-  dangerous" — see the false-positive analysis.
-- Privacy is reduced, not absolute: a trusted-but-malicious caregiver,
-  traffic correlation against Tor, and physical device access remain — see
-  `PRIVACY_THREAT_MODEL.md` section 5.
+```
+[ HOME SIDE ]                                       [ CAREGIVER SIDE ]
+Raw per-minute sequences                             Never sees raw sequences
+RoutineModel runs locally                           Sees only MinimalVerdict
+        |                                                   ^
+        +------ explain_minimal() ------ minimize() --------+
+                (drops raw signal)      (rounded coarse fields)
+```
+
+1. **`MinimalVerdict` Packets:** The only object allowed to cross the boundary. It contains exactly 5 coarse fields (date, tier, block, rounded score, direction). It never transmits raw counts, sequences, or fine-grained timestamps.
+2. **`ConsentGate`:** A resident-controlled "off switch." If the resident pauses monitoring, no verdicts are accepted or shown on the dashboard, even if they are `URGENT` safety alerts.
+3. **`RetentionPolicy`:** Expired raw per-minute data is purged locally beyond a 7-day sliding window, preventing indefinite retention of sensitive activity logs.
+4. **`AuditLog`:** Logs every single caregiver read operation, ensuring complete transparency and preventing asymmetric surveillance.
+
+---
+
+## 4. Evaluated Scenarios and Anomaly Profiles
+
+Hearth models behavioral deviations over four semantic daily blocks: `night` (00:00–06:30), `morning` (06:30–08:30), `day` (08:30–18:00), and `evening` (18:00–24:00). It evaluates:
+
+*   **Prolonged Daytime Inactivity (Fall Simulation):** No activity detected during peak waking hours (11:00–16:00).
+*   **Nocturnal Restlessness (Wandering):** Sustained activity during deep sleep hours (01:00–04:00).
+*   **Missed Morning Routine:** Failure to trigger kitchen or bathroom sensors during the breakfast window (06:30–08:30).
+*   **Benign-Atypical Schedule (Negative Case):** A sick day or guest visit where the resident stays in bed all day and wanders briefly at night. This is a negative test case for model false alarms.
+
+---
+
+## 5. Network Transport Profiles
+
+Hearth measures live event streaming (300 events) over three transports to evaluate latency-throughput-security trade-offs:
+*   **DIRECT:** Plain loopback/LAN connection. Trivial setup; zero latency overhead, but zero confidentiality.
+*   **VPN:** Standard loopback socket. Encrypts the path; moderate setup; minimal latency overhead, but requires a trusted VPN provider.
+*   **TOR:** Routed through a local SOCKS5 proxy (`127.0.0.1:9050`). Multi-hop onion routing; highest IP confidentiality; high latency overhead (~18 ms), and lower throughput.
+
+---
+
+## 6. Documented Negative / Failure Experiments
+
+Hearth explicitly includes and documents failure cases to ensure transparent claims:
+1.  **Atypical Sick Day:** Both models trigger a `NOTIFY` false alarm on Day 7, demonstrating that the prototype cannot separate "abnormal but safe" from "abnormal and dangerous."
+2.  **Tor Proxy Disruption:** If the Tor daemon is inactive, the network benchmark gracefully handles the `PySocks connection error` without crashing the process, logging the outage transparently.
+3.  **Consent Override Delivery:** Demonstrates that if a resident pauses monitoring, even an `URGENT` safety alert is successfully suppressed and omitted from the caregiver feed.

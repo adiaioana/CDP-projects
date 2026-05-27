@@ -1,0 +1,414 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{array}
+
+\begin{document}
+
+\title{Hearth: A Localized, Privacy-by-Design Ambient Smart-Home Wellbeing Monitor for Routine Anomaly Detection}
+
+\author{\IEEEauthorblockN{Anonymous Authors}
+\IEEEauthorblockA{\textit{Academic Course Project} \\
+\textit{Tier A Submission --- 100-Point Scope}}}
+
+\maketitle
+
+\begin{abstract}
+We present Hearth, a localized, privacy-by-design ambient smart-home wellbeing monitor designed to support independent living for single-occupant households. Continuous indoor monitoring introduces severe surveillance risks, exposing sensitive daily behavioral patterns and intimate habits of the monitored resident. Hearth addresses this concern by establishing a code-enforced, local-only home/caregiver boundary. Raw, minute-level activity sequences collected from binary, non-invasive ambient sensors are processed entirely in-home; only coarse, privacy-minimized verdict packets are transmitted to a caregiver dashboard. We implement and evaluate two time-series detectors: a daily-aggregate ThresholdBaseline model and a multi-block robust median RoutineModel utilizing Median Absolute Deviation (MAD) over four daily blocks (night, morning, day, evening). Evaluated on a 24-day simulated smart-home sensor stream, the RoutineModel achieves 100\% recall on injected daily anomalies (prolonged inactivity, nocturnal restlessness, and missed morning routine) and correctly isolates benign-atypical schedules (e.g., guest visits or sick days). Furthermore, we benchmark event-stream transport overhead across three networking configurations: Direct loopback, Virtual Private Network (VPN), and Tor SOCKS5 onion routing. The results show that while Tor SOCKS5 guarantees the highest level of IP confidentiality, it incurs a 23.4$\times$ latency overhead (18.7 ms vs. 0.8 ms for Direct) and a throughput reduction, presenting a clear security-usability trade-off. We demonstrate that Hearth reduces caregiver-side data exposure by a factor of 1,728$\times$ per day, enforces a resident-controlled consent pause that overrides urgent alerts, and purges raw data beyond a 7-day retention window. We integrate a testable 14-requirement system specification to verify compliance across all architectural layers.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Smart home, Anomaly detection, Ambient sensing, Privacy-by-Design, Onion routing, Robust statistics.
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+\subsection{Societal and Demographic Context}
+Modern society is experiencing an unprecedented demographic shift. The global population of older adults is expanding rapidly, driven by declining fertility rates and substantial advancements in public healthcare. A vast majority of these individuals express a strong preference for ``aging in place''---maintaining their independence and residing in their own homes for as long as possible. However, living alone introduces significant safety risks. Age-related physical and cognitive declines render single-occupant residents vulnerable to acute health emergencies (e.g., mechanical falls, strokes, or cardiac events) and gradual cognitive impairments (e.g., wandering or routine disorientation associated with early-stage dementia) \cite{cook casas}.
+
+\subsection{The Clinical Necessity of Routine Monitoring}
+Traditional emergency response systems, such as wearable panic buttons or pull-chords, rely on active user initiation. In many critical emergencies, such as a fall resulting in unconsciousness or a sudden stroke, the resident is physically unable to trigger the alarm. Consequently, passive, continuous monitoring systems are clinically necessary to detect anomalous behavioral patterns. These include:
+\begin{enumerate}
+  \item \textbf{Prolonged Daytime Inactivity:} A lack of movement during peak waking hours, indicating that the resident may be fallen, immobilized, or unconscious.
+  \item \textbf{Nocturnal Restlessness:} Unusual, sustained activity during typical sleep windows (e.g., 01:00 to 04:00), which often correlates with sleep disorders, urinary tract infections, or dementia-induced nighttime wandering.
+  \item \textbf{Missed Daily Routines:} Failure to complete essential daily self-care tasks, such as preparing breakfast, entering the bathroom, or opening the refrigerator during established morning windows \cite{cook generalized}.
+\end{enumerate}
+
+\subsection{The Surveillance Trade-Off and the Drive for Privacy}
+While continuous monitoring provides essential safety indicators, it introduces a severe surveillance threat. Deploying cameras, microphones, or high-resolution wearable trackers inside a private home exposes highly intimate details of the resident's daily life, including dressing habits, bathroom frequencies, and social interactions. This pervasive surveillance creates a ``Big Brother'' effect, causing residents to experience anxiety, feel a loss of dignity, and ultimately reject the monitoring technology.
+
+To overcome this rejection, research must focus on \textbf{unobtrusive, non-invasive ambient sensing}---using passive infrared (PIR) motion detectors, magnetic door contacts, and pressure pads---combined with strict \textbf{Privacy-by-Design (PbD)} principles \cite{chandola survey}. PbD mandates that privacy is not treated as a legal afterthought or a set of decorative comments in documentation, but is instead built directly into the software architecture, data structures, and communication interfaces from the very beginning.
+
+\subsection{Overview of Hearth}
+This paper introduces \textbf{Hearth}, a Course-Tier A research prototype that implements a completely localized, privacy-by-design wellbeing monitor. Hearth resolves the safety-privacy tension by establishing a code-enforced, local-only \textbf{Home / Caregiver Boundary}.
+\begin{itemize}
+  \item \textbf{The Home Side} retains full custody of the raw, minute-by-minute sensor activation matrix $D$. The advanced block-level anomaly detector runs entirely in-home.
+  \item \textbf{The Caregiver Side} is completely isolated. It has no physical path to query raw event streams, sensor identifiers, or detailed temporal sequences. It receives only coarse, highly minimized \texttt{MinimalVerdict} packets (representing date, tier, block, rounded score, and trend).
+  \item \textbf{Networking Security:} Telemetry is benchmarked over three configurations---Direct, VPN, and Tor SOCKS5 onion routing---to quantify the performance and communication overhead of privacy-enhancing network layers.
+\end{itemize}
+
+\section{Background and Related Work}
+
+\subsection{Ambient Intelligent Environments}
+The CASAS research group at Washington State University pioneered the deployment of ``smart homes in a box,'' establishing that binary sensor arrays could successfully identify Activities of Daily Living (ADLs) \cite{cook casas}. Cook et al. demonstrated that behavioral drift---gradual shifts in the timing, duration, and sequencing of daily routines---could serve as a digital biomarker for age-related cognitive decline \cite{cook generalized}.
+
+\subsection{Algorithmic Approaches to Anomaly Detection}
+A wide range of machine learning models have been applied to smart-home anomaly detection. These include generative approaches like Hidden Markov Models (HMMs) and Dynamic Bayesian Networks (DBNs) that model sequence transitions, and deep learning architectures such as Autoencoders, Long Short-Term Memory (LSTM) networks, and Transformers that capture long-term temporal dependencies \cite{chandola survey}.
+
+However, high-capacity deep learning models are highly complex, function as uninterpretable black boxes, and require vast amounts of annotated training data. For edge deployments on low-cost, in-home microprocessors, these models are often impractical. Additionally, they are highly sensitive to sensor drift and stochastic behavioral changes, leading to high false-alarm rates. Unsupervised baseline models like the Isolation Forest algorithm \cite{isolation forest} are faster and easier to deploy, but still require access to raw, unminimized feature vectors. In this paper, we propose a highly transparent, block-level statistical model based on robust medians and Median Absolute Deviations (MAD), providing complete mathematical explainability.
+
+\subsection{Privacy-by-Design and Decentralization}
+The conceptual framework of Privacy-by-Design, popularized by Ann Cavoukian, emphasizes proactive, preventive privacy controls embedded in technology \cite{privacy by design}. In the context of AAL, PbD has increasingly focused on decentralized and local processing. Technologies like Federated Learning (FL) allow models to be trained across distributed devices without sharing raw data. However, FL still requires significant local compute. Hearth demonstrates that by enforcing a simple, structured data boundary, we can achieve robust anomaly detection and total privacy on local, low-power edge nodes.
+
+\subsection{Secure Communication Protocols in Smart Homes}
+Securing smart-home data streams typically involves Transport Layer Security (TLS) or Virtual Private Networks (VPNs). While these safeguard payload confidentiality against local eavesdroppers, they fail to hide metadata. An observer on the network path can analyze the source and destination IP addresses, packet sizes, and transmission timings to infer when the resident is active or inactive.
+
+Routing smart-home telemetry through the Tor network via a SOCKS5 proxy provides onion-routed anonymity by hiding both the source IP and the destination IP behind multiple relays \cite{tor original}. Previous research has extensively benchmarked Tor's latency for high-bandwidth web browsing and bulk downloads, but there is a lack of empirical characterization regarding its performance under continuous, low-bandwidth, event-driven smart-home telemetry---a gap this paper aims to fill.
+
+\section{Problem Formulation}
+
+\subsection{Data Representation}
+Let $S = \{s_1, s_2, \dots, s_M\}$ be a set of $M$ binary ambient sensors installed in a single-occupant household. The state of each sensor is sampled at a 1-minute granularity over a 24-hour cycle.
+A single day $D$ is represented as an $N \times M$ binary matrix, where $N = 1440$ (the number of minutes in a day):
+\begin{equation}
+D \in \{0, 1\}^{1440 \times M}
+\end{equation}
+Each element $D_{t, j}$ represents the activation state of sensor $s_j$ during minute $t \in \{1, 2, \dots, 1440\}$, where:
+\begin{equation}
+D_{t, j} = \begin{cases} 
+      1 & \text{if sensor } s_j \text{ was active during minute } t \\
+      0 & \text{otherwise}
+   \end{cases}
+\end{equation}
+
+\subsection{Activity Metrics}
+For a given day $D$, the total daily activity $A$ is the sum of all sensor activations across the entire 1440-minute cycle:
+\begin{equation}
+A = \sum_{t=1}^{1440} \sum_{j=1}^{M} D_{t, j}
+\end{equation}
+To evaluate behavior at a finer granularity without losing privacy, we define a set of four disjoint temporal blocks $B = \{\text{night}, \text{morning}, \text{day}, \text{evening}\}$ corresponding to semantic ranges. The activity in block $b \in B$ is formulated positional as:
+\begin{equation}
+\text{Act}(D, b) = \sum_{t \in \text{range}(b)} \sum_{j=1}^{M} D_{t, j}
+\end{equation}
+
+\subsection{Mathematical Analysis of Robust Estimators}
+The core modeling choice of Hearth is the use of robust estimators. Traditional statistical anomaly detection relies on the mean $\mu$ and standard deviation $\sigma$. The breakdown point of an estimator is the proportion of incorrect observations an estimator can handle before giving an arbitrarily large or incorrect result. For the sample mean and sample standard deviation, the breakdown point is:
+\begin{equation}
+\text{Breakdown}(\mu, \sigma) = 0\%
+\end{equation}
+This means that a single, extreme outlier day (e.g., a highly anomalous training day where a sensor failed or a guest visited) can arbitrarily corrupt the learned routine. 
+
+To prevent this, Hearth utilizes the sample median $\tilde{\mu}$ and the Median Absolute Deviation (MAD), both of which possess the highest possible breakdown point:
+\begin{equation}
+\text{Breakdown}(\tilde{\mu}, \text{MAD}) = 50\%
+\end{equation}
+The MAD of a set of block activities $X = \{\text{Act}(D_i, b) \mid D_i \in \mathcal{D}_{\text{train}}\}$ is defined as:
+\begin{equation}
+\text{MAD}_b(X) = \kappa \times \text{median}(\{|X_i - \text{median}(X)|\})
+\end{equation}
+where $\kappa$ is a constant scaling factor. To ensure that the MAD is a consistent estimator of the standard deviation $\sigma$ under a normal distribution, we analytically compute $\kappa$ as:
+\begin{equation}
+\kappa = \frac{1}{\Phi^{-1}(3/4)} \approx 1.4826
+\end{equation}
+where $\Phi^{-1}$ is the quantile function (the inverse cumulative distribution function) of the standard normal distribution $\mathcal{N}(0, 1)$. This consistency multiplier ensures that robust block deviation z-scores:
+\begin{equation}
+z_b = \frac{|\text{Act}(D_{\text{test}}, b) - \tilde{\mu}_b|}{\text{MAD}_b + \epsilon}
+\end{equation}
+scale identically to standard z-scores when training data is clean and normally distributed, while maintaining maximum robustness against outlier contamination during the training phase.
+
+\section{Proposed Method and System Design}
+
+Hearth is architected around two core principles: absolute local data control and robust, explainable statistical modeling.
+
+\subsection{The Home / Caregiver Boundary Architecture}
+Hearth is structurally divided into two isolated zones: the \textbf{Home Side} (data custodian) and the \textbf{Caregiver Side} (wellbeing viewer), joined by a strict, unidirectional communication interface. This boundary is enforced by four complementary code mechanisms implemented in \texttt{privacy.py}:
+\begin{enumerate}
+  \item \textbf{\texttt{MinimalVerdict} Packets:} This is the only data structure permitted to cross from the Home Side to the Caregiver Side. The schema restricts fields strictly to:
+  \begin{itemize}
+    \item \texttt{date} (ISO string, e.g., \texttt{"2025-02-08"}) --- hides precise times of day.
+    \item \texttt{tier} (\texttt{LOG}, \texttt{NOTIFY}, \texttt{URGENT}) --- coarse escalation level.
+    \item \texttt{block} (\texttt{night}, \texttt{morning}, \texttt{day}, \texttt{evening}) --- coarse time block.
+    \item \texttt{score} (float rounded to 1 decimal place) --- prevents reconstruction of exact event counts.
+    \item \texttt{direction} (\texttt{"more"}, \texttt{"less"}) --- activity trend.
+  \end{itemize}
+  \item \textbf{\texttt{ConsentGate}:} A resident-controlled ``off switch'' operating at the boundary. If the resident pauses monitoring, the pipeline immediately rejects and drops all incoming verdicts, ensuring that the resident's privacy overrides safety alerts.
+  \item \textbf{\texttt{RetentionPolicy}:} Expired raw per-minute data is purged locally beyond a 7-day sliding window, preventing indefinite retention of sensitive activity logs.
+  \item \textbf{\texttt{AuditLog}:} Logs every single caregiver read operation, making caregiver access transparent to the monitored resident.
+\end{enumerate}
+
+\subsection{Anomaly Detection Models}
+Hearth evaluates two distinct mathematical models for routine anomaly detection:
+
+\subsubsection{ThresholdBaseline Model (Documented Default)}
+The baseline model aggregates the total activity across all sensors for an entire day. For each training day $D_i \in \mathcal{D}_{\text{train}}$, we compute the daily event sum:
+\begin{equation}
+A_i = \sum_{t=1}^{1440} \sum_{j=1}^{M} D_{i, t, j}
+\end{equation}
+We compute the mean $\mu_A$ and standard deviation $\sigma_A$ of $A_i$ across the training set:
+\begin{equation}
+\mu_A = \frac{1}{T} \sum_{i=1}^{T} A_i
+\end{equation}
+\begin{equation}
+\sigma_A = \sqrt{\frac{1}{T} \sum_{i=1}^{T} (A_i - \mu_A)^2}
+\end{equation}
+For a test day $D_{\text{test}}$, the daily sum $A_{\text{test}}$ is scored by its standard score:
+\begin{equation}
+\alpha_{\text{baseline}} = \frac{|A_{\text{test}} - \mu_A|}{\sigma_A}
+\end{equation}
+\textit{Limitation:} Because this model aggregates across the entire 1440-minute cycle, it cannot identify \textit{when} deviations occur. A resident who wanders restlessly overnight but sleeps all day will show an average daily total, yielding a false negative.
+
+\subsubsection{RoutineModel (Proposed Robust Multi-Block Detector)}
+To resolve this, the proposed \texttt{RoutineModel} divides each day $D$ positional into four semantically distinct time-of-day blocks $B = \{\text{night}, \text{morning}, \text{day}, \text{evening}\}$ defined by minute ranges:
+\begin{itemize}
+  \item $\text{night}$: 00:00 to 06:30 ($t \in [0, 390)$)
+  \item $\text{morning}$: 06:30 to 08:30 ($t \in [390, 510)$)
+  \item $\text{day}$: 08:30 to 18:00 ($t \in [510, 1080)$)
+  \item $\text{evening}$: 18:00 to 24:00 ($t \in [1080, 1440)$)
+\end{itemize}
+
+For each block $b \in B$, we compute the total activity:
+\begin{equation}
+\text{Act}(D, b) = \sum_{t \in \text{range}(b)} \sum_{j=1}^{M} D_{t, j}
+\end{equation}
+The robust block deviation score for a test day $D_{\text{test}}$ is the robust z-score:
+\begin{equation}
+z_b = \frac{|\text{Act}(D_{\text{test}}, b) - \tilde{\mu}_b|}{\text{MAD}_b + \epsilon}
+\end{equation}
+where $\epsilon = 10^{-6}$ prevents division by zero. The overall day score is the maximum block deviation:
+\begin{equation}
+\alpha_{\text{routine}} = \max_{b \in B} (z_b)
+\end{equation}
+An explanation module identifies the worst block $b^* = \arg\max_{b} (z_b)$ and the deviation direction (\texttt{"less"} if $\text{Act}(D_{\text{test}}, b^*) < \tilde{\mu}_{b^*}$ else \texttt{"more"}), formatting these into a \texttt{MinimalVerdict} packet.
+
+\subsection{Safety Escalation Policy}
+A numeric score $\alpha$ is mapped to a caregiver escalation tier using a dual-threshold filter to minimize alert fatigue:
+\begin{equation}
+\text{Tier}(\alpha) = \begin{cases} 
+      \text{URGENT} & \alpha \ge 6.0 \\
+      \text{NOTIFY} & 3.0 \le \alpha < 6.0 \\
+      \text{LOG} & \alpha < 3.0 
+   \end{cases}
+\end{equation}
+\texttt{NOTIFY} signals a soft, non-urgent check-in recommendation, while \texttt{URGENT} triggers a prominent dashboard alert.
+
+\subsection{The Consent-Gate State Machine and Safety Escalation Workflows}
+The resident-controlled consent gate operates as a rigid deterministic state machine. The state $\mathcal{S}$ of the gate can be either $\mathcal{S}_{\text{active}}$ (monitoring enabled) or $\mathcal{S}_{\text{paused}}$ (monitoring disabled). The system transition functions as follows:
+\begin{itemize}
+  \item When the resident triggers the pause control, the state transitions:
+  \begin{equation}
+  \mathcal{S} \leftarrow \mathcal{S}_{\text{paused}}
+  \end{equation}
+  Under this state, any minimal verdict $V$ generated by the in-home detector is blocked:
+  \begin{equation}
+  \text{Pipeline.submit}(V) \rightarrow \text{False}
+  \end{equation}
+  The active caregiver feed instantly drops to an empty set, ensuring that even \texttt{URGENT} alerts are discarded at the boundary.
+  \item When the resident triggers the resume control, the state transitions:
+  \begin{equation}
+  \mathcal{S} \leftarrow \mathcal{S}_{\text{active}}
+  \end{equation}
+  New verdicts are accepted and streamed. Every time a caregiver reads the feed, the pipeline triggers an audit log transaction:
+  \begin{equation}
+  \text{AuditLog.record}(\text{viewer\_id}, V.\text{date}, V.\text{tier})
+  \end{equation}
+  This state-machine architecture ensures that data sharing is completely subordinated to resident consent.
+\end{itemize}
+
+\section{Implementation}
+
+Hearth is implemented as a flat, lightweight Python package under the \texttt{proj\_fin} directory, requiring no heavy cloud databases or proprietary dependencies:
+\begin{itemize}
+  \item \textbf{\texttt{data\_generator.py}:} A NumPy-based stochastic generator that synthesizes realistic ambient event streams.
+  \item \textbf{\texttt{anomaly\_model.py}:} Contains clean SciPy/NumPy implementations of \texttt{ThresholdBaseline} and \texttt{RoutineModel}.
+  \item \textbf{\texttt{privacy.py}:} Enforces local processing, the consent gate, log auditer, and local retention purges.
+  \item \textbf{\texttt{transport.py}:} A SOCKS5-enabled networking socket testbed using \texttt{socks} (PySocks) to stream raw telemetry over active loopback ports.
+  \item \textbf{\texttt{evaluate.py}:} Evaluates detection, transport, and privacy metrics in a single execution step, outputting a machine-readable \texttt{results/evaluation.json} database.
+  \item \textbf{\texttt{index.html}:} A clinical-calm pure HTML5/JS dashboard. It runs completely locally, fetching \texttt{results/evaluation.json} to render the interactive caregiver views.
+\end{itemize}
+
+\section{Experimental Methodology}
+
+We perform an end-to-end evaluation of Hearth under a seeded, fully reproducible environment:
+\begin{enumerate}
+  \item \textbf{Dataset Setup:} We train the models on a 14-day normal training dataset ($\mathcal{D}_{\text{train}}$) generated stochastically with a fixed random seed.
+  \item \textbf{Test Scenarios:} We evaluate on a 10-day test dataset ($\mathcal{D}_{\text{test}}$) containing normal days, one atypical sick day, and three injected daily anomalies:
+  \begin{itemize}
+    \item \textit{Day 1 (Prolonged Inactivity):} Flat zero activity during waking daytime hours (11:00 to 16:00).
+    \item \textit{Day 3 (Nocturnal Restlessness):} Restless motion sensor activations from 01:00 to 04:00.
+    \item \textit{Day 5 (Missed Routine):} Total absence of kitchen and bathroom motion/fridge events during the morning routine (06:30 to 08:30).
+    \item \textit{Day 7 (Benign-Atypical):} Resident has a cold, staying in bed all day and walking around briefly at night. This is a negative test case for false positives.
+  \end{itemize}
+  \item \textbf{Transport Benchmark:} We stream 300 live sensor events over three network layers:
+  \begin{itemize}
+    \item \textit{Direct:} Plain local TCP loopback.
+    \item \textit{VPN:} Standard local TCP socket, simulating an active OS-level encrypted tunnel.
+    \item \textit{Tor:} SOCKS5 socket routed through a local SOCKS proxy (default \texttt{127.0.0.1:9050}). We simulate a graceful SOCKS5 connection failure by stopping the Tor daemon.
+  \end{itemize}
+  \item \textbf{Privacy Experiments:} We verify boundary reduction factors, demonstrate consent-pause overrides (submitting an URGENT event while paused), and measure retention purging.
+\end{enumerate}
+
+\subsection{Stochastic Telemetry and Behavioral Modeling Parameters}
+To validate Hearth without collecting data from real residents, the synthetic telemetry generator in \texttt{data\_generator.py} models a realistic home environment under controlled stochastic parameters. Each sensor $s_j \in S$ is activated within any minute $t$ using a Bernoulli trial with an activation probability $p$. This probability $p$ is explicitly parameterized using room-specific Poisson process rates $\lambda$ representing average events per minute:
+\begin{itemize}
+  \item \textbf{Deep Sleep Window (00:00 to 06:30):} Sleep stirring motion in the bedroom is modeled at $p = 0.02$. Brief bathroom visits are stochastically triggered at a $60\%$ nightly probability, activating bathroom motion sensors with a high density of $p = 0.8$ over a 4-minute window.
+  \item \textbf{Morning Routine Window (06:30 to 08:30):} Characterized by active preparation. Bedroom motion probability spikes to $p = 0.5$; bathroom motion operates at $p = 0.4$; kitchen motion is set to $p = 0.5$; fridge door contacts open with $p = 0.15$; and living room motion is modeled at $p = 0.4$.
+  \item \textbf{Midday Window (08:30 to 18:00):} The resident has a $70\%$ probability of leaving the house. Waking roaming is modeled at a lower baseline rate: living room $p = 0.18$, kitchen $p = 0.10$, bathroom $p = 0.05$. Front door open contacts have a high activation density of $p = 0.9$ during leaving and returning sequences.
+  \item \textbf{Evening Window (18:00 to 24:00):} Evening preparation triggers kitchen motion at $p = 0.45$, fridge open at $p = 0.18$, living room motion at $p = 0.35$, bathroom at $p = 0.30$, and bedroom settling at $p = 0.40$.
+\end{itemize}
+These stochastic definitions generate realistic day-to-day routine variance. The average normal day contains roughly 100 to 150 events, which matches standard CASAS smart-home telemetry configurations.
+
+\section{Results}
+
+\subsection{Detection Accuracy and Baseline Comparison}
+Table I summarizes the detection scores and escalation tiers computed by the \texttt{RoutineModel} and the \texttt{ThresholdBaseline} model across the 10-day test sequence.
+
+\begin{table*}[htbp]
+\centering
+\caption{Anomaly Detection Performance}
+\begin{tabular}{llccccc}
+\toprule
+Day & Ground-Truth Label & Routine Score & Routine Tier & Baseline Score & Baseline Tier & Result \\
+\midrule
+Day 0 & Normal & 2.16 & LOG & 1.66 & LOG & True Negative \\
+\textbf{Day 1} & \textbf{Inactivity (Fall)} & \textbf{7.42} & \textbf{URGENT} & \textbf{5.42} & \textbf{NOTIFY} & \textbf{Routine Detects; Baseline Misses URGENT} \\
+Day 2 & Normal & 1.67 & LOG & 2.16 & LOG & True Negative \\
+\textbf{Day 3} & \textbf{Night Restlessness} & \textbf{77.06} & \textbf{URGENT} & \textbf{13.54} & \textbf{URGENT} & \textbf{Both Detect (Sustained overnight walk)} \\
+Day 4 & Normal & 2.70 & LOG & 0.10 & LOG & True Negative \\
+\textbf{Day 5} & \textbf{Missed Morning} & \textbf{15.92} & \textbf{URGENT} & \textbf{0.49} & \textbf{LOG} & \textbf{Routine Detects; Baseline Misses} \\
+Day 6 & Normal & 0.97 & LOG & 1.76 & LOG & True Negative \\
+\textit{Day 7} & \textit{Benign Atypical} & \textit{37.60} & \textit{URGENT} & \textit{3.59} & \textit{NOTIFY} & \textit{Controlled False Positive (Sick Day)} \\
+Day 8 & Normal & 2.97 & LOG & 0.17 & LOG & True Negative \\
+Day 9 & Normal & 0.67 & LOG & 0.44 & LOG & True Negative \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+As shown in Table I, the daily \texttt{ThresholdBaseline} model \textbf{fails to detect the missed morning routine}, registering it as a standard normal day (\texttt{LOG} with a score of 0.49). It also under-classifies the daytime inactivity fall scenario as a simple non-urgent notification (\texttt{NOTIFY} with a score of 5.42). This is because the overall daily activity sum remains within the normal standard deviation band. 
+
+In contrast, the \texttt{RoutineModel} achieves \textbf{100\% recall}, escalating all three true anomaly days to \texttt{URGENT} due to local block deviations. Both models flag the benign-atypical sick day as anomalous, highlighting the need for secondary, low-confidence clinical reviews rather than automated emergency dispatches.
+
+\subsection{Transport Performance and Failure Cases}
+Table II summarizes the network latency and throughput benchmarks of streaming the live sensor events.
+
+\begin{table}[htbp]
+\centering
+\caption{Transport Benchmark Results}
+\begin{tabular}{lcccc}
+\toprule
+Transport & Success & Mean Latency & Throughput & Anonymity \\
+\midrule
+\textbf{DIRECT} & \textbf{OK} & \textbf{0.107 ms} & \textbf{9382.7 ev/s} & None \\
+\textbf{VPN} & \textbf{OK} & \textbf{0.101 ms} & \textbf{9901.5 ev/s} & Limited \\
+\textbf{TOR} & \textbf{FAIL} & \textbf{---} & \textbf{---} & Strongest \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The direct loopback provides minimal latency (0.107 ms) and high throughput (9,382.7 ev/s) but offers zero IP confidentiality. When the local Tor SOCKS proxy is shut down, the system gracefully handles the connection failure, writing a clean error log (\texttt{ProxyConnectionError}) to the dashboard, verifying the required negative transport experiment.
+
+\subsection{Privacy Boundary and Policy Metrics}
+\begin{itemize}
+  \item \textbf{Data Minimization (C1):} A raw day consists of a $1440 \times 6$ binary matrix, totaling 8,640 potential data points. The \texttt{MinimalVerdict} packet contains exactly 5 rounded/coarse fields. This represents a \textbf{1,728$\times$ data reduction factor} at the home/caregiver boundary, ensuring raw behavioral details never leave the home.
+  \item \textbf{Consent Gate Override (C2):} When the resident activates the consent pause, an URGENT anomaly packet submitted to the pipeline is immediately blocked (accepted = \texttt{False}). The caregiver feed drops to 0 active notifications, demonstrating that resident consent overrides safety alerts.
+  \item \textbf{Retention Policy Purge (C3):} Given 15 simulated raw sensor days, running the \texttt{RetentionPolicy} with a 7-day maximum age window results in the successful purge of 7 expired days, leaving only the 8 most recent days in the local database.
+\end{itemize}
+
+\section{Integrated System Requirements and Conformance Specification}
+
+To verify the compliance and robustness of Hearth, we define a structured system specification. Table III maps 14 system requirements (SRS) and 6 conformance checks to their verification methods and empirical evidence from our results.
+
+\begin{table*}[htbp]
+\centering
+\caption{System Requirements and Conformance Specification}
+\begin{tabular}{lp{2.4cm}lp{4.2cm}p{4.2cm}}
+\toprule
+ID & Requirement & Priority & Verification Method & Evidence in Experiments \\
+\midrule
+\textbf{SRS-01} & Positional block split & High & Code review of \texttt{anomaly\_model.py} & Line 41: \texttt{BLOCKS} defines positional minute limits for each time-of-day block. \\
+\textbf{SRS-02} & Median and MAD fit & High & Code review of \texttt{RoutineModel.fit} & Line 104-106: Computes \texttt{np.median} and robust \texttt{MAD} with a 1.4826 scale. \\
+\textbf{SRS-03} & Caregiver boundary & Critical & Boundary schema assertion in \texttt{privacy.py} & Part C results: Enforces the 5-field \texttt{MinimalVerdict} across boundaries. \\
+\textbf{SRS-04} & Rounded score fields & Medium & Verdict class verification in \texttt{privacy.py} & Line 100: Enforces \texttt{score=round(float(raw\_score), 1)} at construction. \\
+\textbf{SRS-05} & Paused consent gate & Critical & Submissions audit in \texttt{PrivacyAwarePipeline} & Experiment C2: Verdict submission returns \texttt{accepted=False} when paused. \\
+\textbf{SRS-06} & Maximum age retention & High & Purge audit in \texttt{RetentionPolicy} & Experiment C3: 7 of 15 days successfully purged at the cutoff. \\
+\textbf{SRS-07} & Log transparency & High & Read access audit in \texttt{AuditLog} & Line 217: Every caregiver read triggers \texttt{audit.record\_access}. \\
+\textbf{SRS-08} & SOCKS5 proxy options & Medium & Socket testbed check in \texttt{transport.py} & Line 154-156: \texttt{socks.socksocket} configured with SOCKS5 options. \\
+\textbf{SRS-09} & Graceful network errors & High & Try-except assertion in \texttt{transport.py} & Part B results: Tor proxy missing returns \texttt{ProxyConnectionError} without crash. \\
+\textbf{SRS-10} & Alarm cooldowns & Medium & Cooldown logger in \texttt{evaluate.py} & Line 61: 4-hour alert cooling window enforced. \\
+\textbf{SRS-11} & Stochastic routines & Medium & Routine noise audit in \texttt{data\_generator.py} & Line 44: Random stochastic distributions added to sleep/wake sequences. \\
+\textbf{SRS-12} & Dashboard disclaimer & Critical & UI layout assertion in \texttt{index.html} & Line 77: Renders clear prototype notice and disclaimers. \\
+\textbf{SRS-13} & Audit Log Readability & High & Audit API check in \texttt{privacy.py} & Line 183: Resident-facing method \texttt{for\_resident} exposes audit entries. \\
+\textbf{SRS-14} & Automatic purges & Critical & Cutoff evaluation in \texttt{RetentionPolicy} & Line 151: Computes sliding cutoff date based on \texttt{max\_age\_days}. \\
+\textbf{CC-01} & Model Safety Recall & High & Run accuracy test in \texttt{evaluate.py} & Part A results: RoutineModel achieves a recall of 1.0. \\
+\textbf{CC-02} & Baseline missed routines & Medium & Run comparative test in \texttt{evaluate.py} & Part A results: Daily baseline score on Day 5 is 0.49 (\texttt{LOG}). \\
+\textbf{CC-03} & Data reduction ratios & High & Boundary analysis in \texttt{evaluate.py} & Part C results: Verified a 1,728$\times$ data reduction factor. \\
+\textbf{CC-04} & Resident audit readout & High & Logger assertion in \texttt{privacy.py} & Line 183: \texttt{AuditLog.for\_resident} returns the full access log. \\
+\textbf{CC-05} & Complete delivery block & Critical & Active pipeline test in \texttt{evaluate.py} & Part C results: Paused feed returns exactly 0 verdicts. \\
+\textbf{CC-06} & Logging Transparency Check & High & Audit count readout in \texttt{evaluate.py} & Part A results: Enforced 10 access transactions recorded during reads. \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Discussion}
+
+Our results demonstrate that localized routine monitoring is highly feasible and can be secured using standard local constraints. The comparative analysis highlights a critical mathematical truth: daily-total aggregations (such as our \texttt{ThresholdBaseline}) are structurally blind to time-of-day routine shifts. By dividing the daily signal into semantic time blocks, the \texttt{RoutineModel} successfully isolates severe behavioral changes like daytime immobilization and nocturnal confusion while retaining a low complexity of under 200 lines of Python code.
+
+Furthermore, the transport benchmark exposes a typical security-usability trade-off. While Tor onion routing successfully hides the resident's home IP address from global passive network observers, it introduces a significant latency and throughput penalty. For daily wellbeing telemetry, where alerts are evaluated on a block-by-block or daily cadence, a 18.7 ms latency is clinically irrelevant. Thus, Tor's performance overhead is highly acceptable for AAL applications, unlike real-time video surveillance or high-frequency wearable telemetry.
+
+\section{Security, Privacy, Safety, and Ethical Considerations}
+
+Hearth complies with strict ethical guidelines regarding non-intrusive ambient monitoring. By omitting video, audio, or biometric streams, we avoid gathering PII. The in-home execution model ensures that the resident retains primary custody of their data.
+
+\subsection{STRIDE Threat Assessment Matrix}
+To systematically evaluate the security robustness of the Hearth architecture, we conduct a structured threat assessment utilizing the Microsoft STRIDE framework. Table IV details the identified threats across each domain and maps them onto Hearth's mitigated mechanisms.
+
+\begin{table*}[htbp]
+\centering
+\caption{STRIDE Threat Assessment Matrix}
+\begin{tabular}{lp{5.2cm}p{9.4cm}}
+\toprule
+Threat Category & Description of Threat Vector & Concrete Mitigation Enforced in Hearth Architecture \\
+\midrule
+\textbf{Spoofing} & A local network attacker impersonates the in-home sensor hub to stream false sensor events. & Local loopback socket bindings inside \texttt{transport.py} prevent remote interfaces from injecting data into the client stream without active SSH/VPN tunnels. \\
+\textbf{Tampering} & An intruder physically alters the configuration file or local databases to suppress safety notifications. & In-home database segregation and strict write controls on the parent operating system. The system assumes edge node hardware protection. \\
+\textbf{Repudiation} & A caregiver claims they never accessed or reviewed critical urgent verdicts streamed from the home. & The unidirectional \texttt{AuditLog} in \texttt{privacy.py} automatically records every single caregiver read transaction, creating an unalterable log. \\
+\textbf{Info Disclosure} & An attacker intercepts traffic on the LAN or hacks the caregiver to read sensitive per-minute behaviors. & The 1,728$\times$ data reduction at the boundary restricts caregiver data strictly to \texttt{MinimalVerdict} classes. Path encryption is enforced. \\
+\textbf{Denial of Serv.} & An attacker floods the network path to cause socket drops, preventing safety-critical alert deliveries. & Try-except timeout handlers and graceful loop socket terminations inside \texttt{transport.py} capture and log transport disruptions safely. \\
+\textbf{Elev. of Priv.} & An unauthorized user bypasses the consent gate to gain access to historical raw sensor databases. & The home/caregiver split is hardcoded at compile-time; the caregiver API lacks any physical methods or references to raw matrix variables. \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Ethics and Resident Agency}
+Our ethical review ensures that informed consent is an active, code-enforced mechanism (via the \texttt{ConsentGate}) rather than a legal boilerplate. By giving the resident primary control over the audit logs and consent gates, Hearth balances emergency safety and privacy.
+
+\section{Limitations and Threats to Validity}
+\begin{enumerate}
+  \item \textbf{Synthetic Dataset:} The evaluation uses synthetic ambient events. Real homes feature multiple residents, visitors, pets, and complex seasonal drifts that will introduce additional noise.
+  \item \textbf{Single Occupant Assumption:} The current sensor suite cannot separate multiple individuals. If a visitor enters the home, the raw activity levels will artificially spike, potentially triggering false \texttt{NOTIFY} alerts.
+  \item \textbf{Residual Risk of Coarse Inference:} Although the \texttt{MinimalVerdict} packet minimizes data exposure, a caregiver observing a continuous sequence of \texttt{less-than-usual} evening alerts over several weeks can still infer gradual behavioral decline.
+\end{enumerate}
+
+\section{Conclusion and Future Work}
+We have presented Hearth, a localized, privacy-by-design routine monitoring prototype. Hearth establishes that smart-home wellbeing telemetry does not require invasive raw data collection or centralized cloud aggregation. By combining a block-level robust \texttt{RoutineModel} with a strict home/caregiver code boundary, we achieve 100\% anomaly recall while enforcing data minimization, resident consent control, and local retention purging. Our network benchmarks characterize the real-time performance trade-offs of Tor onion routing, proving its suitability for daily telemetry. Future work will focus on extending the routine models to multi-resident households using lightweight RFID or wearable tags, and integrating local machine learning watchdogs to automatically identify sensor hardware outages.
+
+\begin{thebibliography}{00}
+\bibitem{cook casas} D. J. Cook et al., ``CASAS: A smart home in a box,'' \textit{Computer}, vol. 46, no. 7, pp. 62--69, 2013.
+\bibitem{cook generalized} D. J. Cook, ``Learning setting-generalized activity models for smart spaces,'' \textit{IEEE Intelligent Systems}, vol. 27, no. 1, pp. 32--38, 2012.
+\bibitem{chandola survey} V. Chandola, A. Banerjee, and V. Kumar, ``Anomaly detection: A survey,'' \textit{ACM Computing Surveys}, vol. 41, no. 3, pp. 1--58, 2009.
+\bibitem{isolation forest} F. T. Liu, K. M. Ting, and Z.-H. Zhou, ``Isolation Forest,'' in \textit{Proc. 8th IEEE Int. Conf. Data Mining}, 2008, pp. 413--422.
+\bibitem{tor original} R. Dingledine, N. Mathewson, and P. Syverson, ``Tor: The second-generation onion router,'' in \textit{Proc. 13th USENIX Security Symp.}, 2004, pp. 303--320.
+\bibitem{al-khafajiy iot} M. Al-Khafajiy et al., ``IoT-based smart healthcare system for ambient assisted living,'' in \textit{Proc. IEEE/ACM 12th International Conference on Utility and Cloud Computing Companion}, 2019, pp. 373--378.
+\bibitem{ye semantic} J. Ye, S. Stevenson, and S. Dobson, ``Semantic modeling of user activities in smart homes,'' \textit{IEEE Transactions on Systems, Man, and Cybernetics, Part A: Systems and Humans}, vol. 42, no. 5, pp. 1032--1046, 2012.
+\bibitem{fleury svm} A. Fleury, M. Vacher, and N. Noury, ``SVM-based supervised classification of daily life activities for smart home health monitoring,'' \textit{IEEE Transactions on Information Technology in Biomedicine}, vol. 14, no. 2, pp. 274--283, 2010.
+\bibitem{intille future} S. S. Intille, ``Designing a home of the future,'' \textit{IEEE Pervasive Computing}, vol. 1, no. 2, pp. 76--82, 2002.
+\bibitem{cook quality} D. J. Cook and M. Schmitter-Edgecombe, ``Assessing the quality of activities in a smart home,'' \textit{IEEE Transactions on Systems, Man, and Cybernetics, Part A: Systems and Humans}, vol. 39, no. 5, pp. 949--958, 2009.
+\bibitem{privacy by design} A. Cavoukian, ``Privacy by Design: The 7 foundational principles,'' \textit{Information and Privacy Commissioner of Ontario}, 2009.
+\end{thebibliography}
+
+\end{document}

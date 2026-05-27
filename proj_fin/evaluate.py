@@ -44,7 +44,7 @@ from transport import run_transport_benchmark                        # noqa: E40
 from privacy import (ConsentGate, AuditLog, RetentionPolicy,          # noqa: E402
                      PrivacyAwarePipeline, minimize)
 
-RESULTS = Path(__file__).resolve().parent.parent / "results"
+RESULTS = Path(__file__).resolve().parent / "results"
 RESULTS.mkdir(exist_ok=True)
 
 
