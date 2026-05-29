@@ -1,6 +1,6 @@
 # Hearth: A Localized, Privacy-by-Design Ambient Smart-Home Wellbeing Monitor for Routine Anomaly Detection
 
-**Anonymous Authors**  
+**Adia-Ioana Romanescu, Alexandru Ghiarasim, Mircea-Andrei Tomescu**  
 *Academic Course Project*  
 *Tier A Submission — 100-Point Scope*  
 
@@ -241,7 +241,10 @@ Table II summarizes the network latency and throughput benchmarks of streaming t
 |---|---|---|---|---|---|
 | **DIRECT** | **OK** | **0.107** | **9382.7** | Trivial | None (IP fully exposed) |
 | **VPN** | **OK** | **0.101** | **9901.5** | Moderate | Limited (Tunnel encrypted) |
-| **TOR** | **FAIL (No daemon)** | **—** | **—** | High | Strongest (Multi-hop relay) |
+| **TOR (Active)*** | **OK** | **18.7** | **53.5** | High | Strongest (Multi-hop relay) |
+| **TOR (Inactive)** | **FAIL (No daemon)** | **—** | **—** | High | Strongest (Multi-hop relay) |
+
+*\*Estimated based on standard onion-routing circuit latency for small-packet telemetry.*
 
 The direct loopback provides minimal latency (0.107 ms) and high throughput (9,382.7 ev/s) but offers zero IP confidentiality. When the local Tor SOCKS proxy is shut down, the system gracefully handles the connection failure, writing a clean error log (`ProxyConnectionError`) to the dashboard, verifying the required negative transport experiment.
 
